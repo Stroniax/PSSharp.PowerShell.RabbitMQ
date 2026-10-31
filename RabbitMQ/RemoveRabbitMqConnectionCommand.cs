@@ -7,6 +7,7 @@ public sealed class RemoveRabbitMqConnectionCommand : RmqCmdlet
 {
     private const string Noun = "RabbitMqConnection";
 
+    public const string NameParameterSet = "Name";
     public const string SessionParameterSet = "Session";
     public const string InstanceParameterSet = "InstanceId";
 
@@ -19,7 +20,7 @@ public sealed class RemoveRabbitMqConnectionCommand : RmqCmdlet
 
     protected override async Task ProcessRecordAsync()
     {
-        var store = new RabbitConnectionStore(SessionState.PSVariable);
+        var store = new RabbitConnectionStore(SessionState);
         foreach (var connection in store.GetConnections())
         {
             if (connection.InstanceId == InstanceId || connection == Connection)

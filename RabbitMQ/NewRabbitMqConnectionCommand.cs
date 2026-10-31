@@ -32,6 +32,7 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
     /// If credentials are not provided, "guest:guest" will be used.
     /// </summary>
     [Parameter(ParameterSetName = ArgsParameterSet, Position = 3)]
+    [Credential]
     public PSCredential? Credential { get; set; }
 
     [Parameter(ParameterSetName = ArgsParameterSet)]
@@ -39,6 +40,10 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
 
     [Parameter]
     public string ClientProvidedName { get; set; } = "PSSharp.PowerShell.RabbitMQ";
+
+    [Parameter]
+    [ValidateNotNullOrWhiteSpace]
+    public string? Name { get; set; }
 
     protected override async Task ProcessRecordAsync()
     {
@@ -70,8 +75,8 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
     {
         Factory!.ClientProvidedName = ClientProvidedName;
         var connection = await Factory.CreateConnectionAsync(StoppingToken);
-        var session = new PSRabbitConnection(connection);
-        new RabbitConnectionStore(SessionState.PSVariable).Add(session);
+        var session = CreateConnection(connection);
+        new RabbitConnectionStore(SessionState).Add(session);
         await WriteObjectAsync(session);
     }
 
@@ -88,8 +93,8 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
             VirtualHost = VirtualHost,
         };
         var connection = await factory.CreateConnectionAsync(StoppingToken);
-        var session = new PSRabbitConnection(connection);
-        new RabbitConnectionStore(SessionState.PSVariable).Add(session);
+        var session = CreateConnection(connection);
+        new RabbitConnectionStore(SessionState).Add(session);
         await WriteObjectAsync(session);
     }
 
@@ -101,8 +106,16 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
             ClientProvidedName = ClientProvidedName
         };
         var connection = await factory.CreateConnectionAsync(StoppingToken);
-        var session = new PSRabbitConnection(connection);
-        new RabbitConnectionStore(SessionState.PSVariable).Add(session);
+        var session = CreateConnection(connection);
+        new RabbitConnectionStore(SessionState).Add(session);
         await WriteObjectAsync(session);
+    }
+
+    private PSRabbitConnection CreateConnection(IConnection connection)
+    {
+        return new PSRabbitConnection(connection)
+        {
+            Name = Name ?? connection.Endpoint.HostName
+        };
     }
 }

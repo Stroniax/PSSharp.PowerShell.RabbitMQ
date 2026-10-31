@@ -10,4 +10,16 @@
     <PackageReference Include="System.Management.Automation" Version="7.6.9" ExcludeAssets="runtime" PrivateAssets="all" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="PSSharp.PowerShell.RabbitMQ.Commands.psd1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="PSSharp.PowerShell.RabbitMQ.formats.ps1xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="PSSharp.PowerShell.RabbitMQ.types.ps1xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

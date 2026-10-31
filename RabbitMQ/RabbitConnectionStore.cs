@@ -7,8 +7,10 @@ namespace PSSharp.PowerShell.RabbitMQ;
 /// to store RabbitMQ sessions.
 /// </summary>
 /// <param name="variables"></param>
-public sealed class RabbitConnectionStore(PSVariableIntrinsics variables)
+public sealed class RabbitConnectionStore(SessionState ss)
 {
+    private PSVariableIntrinsics Variables => ss.PSVariable;
+
     private const string VariableName = "__RabbitMqSessions";
 
     public IEnumerable<PSRabbitConnection> GetConnections()
@@ -28,11 +30,11 @@ public sealed class RabbitConnectionStore(PSVariableIntrinsics variables)
 
     private List<PSRabbitConnection> GetStore()
     {
-        var psvar = variables.Get(VariableName);
+        var psvar = Variables.Get(VariableName);
         if (psvar is null)
         {
             psvar = new PSVariable(VariableName, new List<PSRabbitConnection>(), ScopedItemOptions.Private | ScopedItemOptions.ReadOnly | ScopedItemOptions.Constant);
-            variables.Set(psvar);
+            Variables.Set(psvar);
         }
 
         return (List<PSRabbitConnection>)psvar.Value;
