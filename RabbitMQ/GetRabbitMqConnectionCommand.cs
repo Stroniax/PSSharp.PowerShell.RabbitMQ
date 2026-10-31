@@ -10,7 +10,8 @@ public sealed class GetRabbitMqConnectionCommand : PSCmdlet
     private const string InstanceParameterSet = "Instance";
     private const string NameParameterSet = "Name";
 
-    [Parameter(Mandatory = true, Position = 0, ParameterSetName = NameParameterSet)]
+    [Parameter(Position = 0, ParameterSetName = NameParameterSet)]
+    [ValidateNotNullOrWhiteSpace]
     [SupportsWildcards]
     public string[] Name { get; set; } = [];
 

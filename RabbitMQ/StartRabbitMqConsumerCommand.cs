@@ -29,6 +29,7 @@ public sealed class StartRabbitMqConsumerCommand : RmqCmdlet
     public ulong UnregisterAfterCount { get; set; } = ulong.MaxValue;
 
     [Parameter(Mandatory = true)]
+    [RabbitConnection]
     public PSRabbitConnection Connection { get; set; } = null!;
 
     protected override async Task ProcessRecordAsync()
@@ -37,7 +38,7 @@ public sealed class StartRabbitMqConsumerCommand : RmqCmdlet
 
         if (Wait)
         {
-            await ConsumeSynchronously(channel).ConfigureAwait(false);
+            await ConsumeBlocking(channel).ConfigureAwait(false);
         }
         else
         {
@@ -51,7 +52,7 @@ public sealed class StartRabbitMqConsumerCommand : RmqCmdlet
         }
     }
 
-    private async Task ConsumeSynchronously(IChannel channel)
+    private async Task ConsumeBlocking(IChannel channel)
     {
         var consumer = new AsyncEventingBasicConsumer(channel);
         string? consumerTag = null;
