@@ -70,7 +70,8 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
     {
         Factory!.ClientProvidedName = ClientProvidedName;
         var connection = await Factory.CreateConnectionAsync(StoppingToken);
-        var session = new PSRabbitSession(connection);
+        var session = new PSRabbitConnection(connection);
+        new RabbitConnectionStore(SessionState.PSVariable).Add(session);
         await WriteObjectAsync(session);
     }
 
@@ -87,7 +88,8 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
             VirtualHost = VirtualHost,
         };
         var connection = await factory.CreateConnectionAsync(StoppingToken);
-        var session = new PSRabbitSession(connection);
+        var session = new PSRabbitConnection(connection);
+        new RabbitConnectionStore(SessionState.PSVariable).Add(session);
         await WriteObjectAsync(session);
     }
 
@@ -99,7 +101,8 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
             ClientProvidedName = ClientProvidedName
         };
         var connection = await factory.CreateConnectionAsync(StoppingToken);
-        var session = new PSRabbitSession(connection);
+        var session = new PSRabbitConnection(connection);
+        new RabbitConnectionStore(SessionState.PSVariable).Add(session);
         await WriteObjectAsync(session);
     }
 }
