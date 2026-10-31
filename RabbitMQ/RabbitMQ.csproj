@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <AssemblyName>PSSharp.PowerShell.RabbitMQ</AssemblyName>
+    <RootNamespace>PSSharp.PowerShell.RabbitMQ</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
