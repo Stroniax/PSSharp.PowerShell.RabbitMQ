@@ -1,4 +1,6 @@
-﻿using System.Management.Automation;
+﻿using System.Collections.Concurrent;
+using System.Management.Automation;
+using System.Management.Automation.Runspaces;
 
 namespace PSSharp.PowerShell.RabbitMQ;
 
@@ -7,42 +9,50 @@ namespace PSSharp.PowerShell.RabbitMQ;
 /// to store RabbitMQ sessions.
 /// </summary>
 /// <param name="variables"></param>
-public sealed class RabbitConnectionStore(SessionState ss)
+public sealed class RabbitConnectionStore
 {
-    private PSVariableIntrinsics Variables => ss.PSVariable;
+    private static readonly ConcurrentDictionary<Guid, RabbitConnectionStore> _stores = [];
 
-    private const string VariableName = "__RabbitMqSessions";
+    private readonly ConcurrentDictionary<Guid, PSRabbitConnection> _store = [];
+
+    /// <summary>
+    /// Todo: use <c>AsyncLocal</c> in some way so that this works across async contexts.
+    /// </summary>
+    internal static RabbitConnectionStore Current => _stores.GetOrAdd(Runspace.DefaultRunspace?.InstanceId ?? throw new Exception("No default runspace"), static _ => new());
 
     public IEnumerable<PSRabbitConnection> GetConnections()
     {
-        return GetStore().AsEnumerable();
+        return _store.Values.AsEnumerable();
     }
 
     public void Add(PSRabbitConnection session)
     {
-        GetStore().Add(session);
+        if (HasSessionWithName(session.Name))
+        {
+            throw new InvalidOperationException("A session with the provided name already exists in the store.");
+        }
+
+        if (!_store.TryAdd(session.InstanceId, session))
+        {
+            throw new InvalidOperationException("A session with the provided InstanceId already exists in the store.");
+        }
     }
 
     public bool Remove(PSRabbitConnection session)
     {
-        return GetStore().Remove(session);
+        return _store.TryRemove(session.InstanceId, out _);
     }
 
-    private List<PSRabbitConnection> GetStore()
-    {
-        var psvar = Variables.Get(VariableName);
-        if (psvar is null)
-        {
-            psvar = new PSVariable(VariableName, new List<PSRabbitConnection>(), ScopedItemOptions.Private | ScopedItemOptions.ReadOnly | ScopedItemOptions.Constant);
-            Variables.Set(psvar);
-        }
-
-        return (List<PSRabbitConnection>)psvar.Value;
-    }
+    /// <summary>
+    /// Checks if any session with the provided name already exists. The store does not permit
+    /// duplicate session names.
+    /// </summary>
+    /// <param name="name"></param>
+    /// <returns></returns>
+    public bool HasSessionWithName(string name) => _store.Values.Any(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
 
     public override string ToString()
     {
-        var sessions = GetConnections();
-        return $"RabbitMQ Session Store: {sessions.Count()} session(s)";
+        return $"RabbitMQ Session Store: {_store.Count} session(s)";
     }
 }

@@ -11,7 +11,7 @@ public sealed class RabbitConnectionAttribute : ArgumentTransformationAttribute
 {
     public override object? Transform(EngineIntrinsics engineIntrinsics, object inputData)
     {
-        var store = new RabbitConnectionStore(engineIntrinsics.SessionState);
+        var store = RabbitConnectionStore.Current;
 
         return inputData switch
         {

@@ -29,6 +29,7 @@ public sealed class StartRabbitMqConsumerCommand : RmqCmdlet
     public ulong UnregisterAfterCount { get; set; } = ulong.MaxValue;
 
     [Parameter(Mandatory = true)]
+    [RabbitConnectionCompleter]
     [RabbitConnection]
     public PSRabbitConnection Connection { get; set; } = null!;
 

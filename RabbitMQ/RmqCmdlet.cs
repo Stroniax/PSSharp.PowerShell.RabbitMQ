@@ -32,7 +32,7 @@ public abstract class RmqCmdlet : PSCmdlet, IDisposable
     /// <summary>
     /// Marshals a callback to the pipeline thread.
     /// </summary>
-    protected Task InvokeAsync<T>(Func<T> fn)
+    protected Task<T> InvokeAsync<T>(Func<T> fn)
     {
         var tcs = new TaskCompletionSource<T>();
         _queue.Add(() =>

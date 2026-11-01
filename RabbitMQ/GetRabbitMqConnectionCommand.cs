@@ -3,6 +3,7 @@
 namespace PSSharp.PowerShell.RabbitMQ;
 
 [Cmdlet(VerbsCommon.Get, Noun, DefaultParameterSetName = NameParameterSet)]
+[OutputType(typeof(PSRabbitConnection))]
 public sealed class GetRabbitMqConnectionCommand : PSCmdlet
 {
     private const string Noun = "RabbitMqConnection";
@@ -11,17 +12,19 @@ public sealed class GetRabbitMqConnectionCommand : PSCmdlet
     private const string NameParameterSet = "Name";
 
     [Parameter(Position = 0, ParameterSetName = NameParameterSet)]
+    [RabbitConnectionCompleter]
     [ValidateNotNullOrWhiteSpace]
     [SupportsWildcards]
     public string[] Name { get; set; } = [];
 
 
     [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true, ParameterSetName = InstanceParameterSet)]
+    [RabbitConnectionCompleter]
     public Guid[] InstanceId { get; set; } = [];
 
     protected override void ProcessRecord()
     {
-        var store = new RabbitConnectionStore(SessionState);
+        var store = RabbitConnectionStore.Current;
 
         if (Name.Length == 0 && InstanceId.Length == 0)
         {

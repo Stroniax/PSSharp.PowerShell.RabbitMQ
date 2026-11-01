@@ -17,6 +17,9 @@
     <None Update="PSSharp.PowerShell.RabbitMQ.formats.ps1xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="PSSharp.PowerShell.RabbitMQ.ps1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="PSSharp.PowerShell.RabbitMQ.types.ps1xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
