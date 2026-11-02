@@ -7,7 +7,18 @@ namespace PSSharp.PowerShell.RabbitMQ;
 public sealed class PSRabbitConnection(IConnection connection)
 {
     private readonly IConnection _connection = connection;
-    internal IChannel? DefaultChannel;
+    private IChannel? _defaultChannel;
+
+    internal async ValueTask<IChannel> GetDefaultChannel(CancellationToken cancellationToken)
+    {
+        return _defaultChannel ??= await _connection.CreateChannelAsync(new(true, true), cancellationToken);
+    }
+
+    internal bool TryGetDefaultChannel([MaybeNullWhen(false)]out IChannel channel)
+    {
+        channel = _defaultChannel;
+        return channel is not null;
+    }
 
     /// <summary>
     /// An identifier unique to the session/connection.

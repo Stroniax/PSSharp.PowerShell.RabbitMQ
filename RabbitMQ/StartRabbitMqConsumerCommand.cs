@@ -35,7 +35,7 @@ public sealed class StartRabbitMqConsumerCommand : RmqCmdlet
 
     protected override async Task ProcessRecordAsync()
     {
-        var channel = Connection.DefaultChannel ??= await Connection.GetConnection().CreateChannelAsync(cancellationToken: StoppingToken);
+        var channel = await Connection.GetDefaultChannel(StoppingToken).ConfigureAwait(false);
 
         if (Wait)
         {
