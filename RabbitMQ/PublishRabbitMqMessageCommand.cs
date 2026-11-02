@@ -34,9 +34,6 @@ public sealed class PublishRabbitMqMessageCommand : RmqCmdlet
     [Parameter]
     public string? AppId { get; set; }
 
-    [Parameter]
-    public string? ClsuterId { get; set; }
-
     /// <summary>
     /// Inferred based on <see cref="Serialization"/> if not specified.
     /// </summary>
@@ -60,7 +57,7 @@ public sealed class PublishRabbitMqMessageCommand : RmqCmdlet
 
     [Parameter]
     [ValidateRange("00:00:00", "10675199.02:48:05.4775807")] // TimeSpan.MaxValue
-    public TimeSpan Expiration { get; set; }
+    public TimeSpan? Expiration { get; set; }
 
     [Parameter]
     public SwitchParameter Persistent { get; set; }
@@ -123,7 +120,7 @@ public sealed class PublishRabbitMqMessageCommand : RmqCmdlet
                 PSRabbitMessageSerialization.Json => ("application/json", Encoding.UTF8.GetBytes(
                     JsonObject.ConvertToJson(Payload, new(100, true, true, StringEscapeHandling.EscapeNonAscii, this, PipelineStopToken))
                 )),
-                PSRabbitMessageSerialization.Utf8 => ("text/plain", Encoding.UTF8.GetBytes(Payload?.ToString() ?? string.Empty)),
+                PSRabbitMessageSerialization.Utf8 => ("text/plain", Encoding.UTF8.GetBytes(LanguagePrimitives.ConvertTo<string>(Payload) ?? string.Empty)),
                 PSRabbitMessageSerialization.Binary => ("application/octet-stream", LanguagePrimitives.ConvertTo<byte[]>(Payload)),
                 _ => throw new NotSupportedException($"Serialization type {Serialization} is not supported.")
             };
@@ -147,7 +144,7 @@ public sealed class PublishRabbitMqMessageCommand : RmqCmdlet
             ContentEncoding = ContentEncoding,
             CorrelationId = CorrelationId,
             DeliveryMode = DeliveryMode,
-            Expiration = Expiration.Milliseconds.ToString(),
+            Expiration = Expiration?.Milliseconds.ToString(),
             MessageId = MessageId,
             Persistent = Persistent.IsPresent,
             Priority = Priority,
