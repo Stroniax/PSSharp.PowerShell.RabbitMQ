@@ -1,6 +1,6 @@
-﻿using RabbitMQ.Client;
+﻿using System.Management.Automation;
+using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using System.Management.Automation;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
@@ -10,8 +10,11 @@ public sealed class ConsumerJob : Job
     private readonly IChannel _channel;
     private readonly string _queueName;
     private string? _consumerTag;
+    private WindowWatcher? _windowWatcher;
 
     public ulong UnregisterAfterCount { get; init; } = ulong.MaxValue;
+    public TimeSpan UnregisterAfterWindow { get; init; } = TimeSpan.MaxValue;
+
     private ulong _receivedCount;
 
     public ConsumerJob(IChannel channel, string queueName)
@@ -23,7 +26,13 @@ public sealed class ConsumerJob : Job
 
     public override string StatusMessage => string.Empty;
 
-    public override bool HasMoreData => Output.Count > 0 || Error.Count > 0 || Progress.Count > 0 || Warning.Count > 0 || Verbose.Count > 0 || Debug.Count > 0;
+    public override bool HasMoreData =>
+        Output.Count > 0
+        || Error.Count > 0
+        || Progress.Count > 0
+        || Warning.Count > 0
+        || Verbose.Count > 0
+        || Debug.Count > 0;
 
     public override string Location => _queueName;
 
@@ -40,22 +49,30 @@ public sealed class ConsumerJob : Job
 
         consumer.ReceivedAsync += async (sender, e) =>
         {
+            _windowWatcher?.Reset();
             Output.Add(PSObject.AsPSObject(e));
 
             if (Interlocked.Increment(ref _receivedCount) == UnregisterAfterCount)
             {
-                await _channel.BasicCancelAsync(e.ConsumerTag, false, _cts.Token).ConfigureAwait(false);
+                await _channel
+                    .BasicCancelAsync(e.ConsumerTag, false, _cts.Token)
+                    .ConfigureAwait(false);
             }
         };
 
         consumer.UnregisteredAsync += (sender, e) =>
         {
-            Debug.Add(new DebugRecord("Consumer UnregisteredAsync at " + DateTime.Now.ToString("o")));
+            Debug.Add(
+                new DebugRecord("Consumer UnregisteredAsync at " + DateTime.Now.ToString("o"))
+            );
             if (JobStateInfo.State == JobState.Stopping)
             {
                 SetJobState(JobState.Stopped);
             }
-            else if (_receivedCount >= UnregisterAfterCount)
+            else if (
+                _receivedCount >= UnregisterAfterCount
+                || _windowWatcher is { IsFinished: true }
+            )
             {
                 SetJobState(JobState.Completed);
             }
@@ -72,13 +89,23 @@ public sealed class ConsumerJob : Job
             Debug.Add(new DebugRecord("Consumer ShutdownAsync at " + DateTime.Now.ToString("o")));
             if (e.Exception is not null)
             {
-                var er = new ErrorRecord(e.Exception, "ChannelShutdownError", ErrorCategory.ConnectionError, e);
+                var er = new ErrorRecord(
+                    e.Exception,
+                    "ChannelShutdownError",
+                    ErrorCategory.ConnectionError,
+                    e
+                );
                 Error.Add(er);
             }
             else
             {
                 var ex = new Exception("The channel was shut down.");
-                var er = new ErrorRecord(ex, "ChannelShutdownError", ErrorCategory.ConnectionError, e);
+                var er = new ErrorRecord(
+                    ex,
+                    "ChannelShutdownError",
+                    ErrorCategory.ConnectionError,
+                    e
+                );
                 Error.Add(er);
             }
             SetJobState(JobState.Failed);
@@ -91,9 +118,24 @@ public sealed class ConsumerJob : Job
         }
         catch (Exception e)
         {
-            Error.Add(new ErrorRecord(e, "BasicConsumeError", ErrorCategory.NotSpecified, _queueName));
+            Error.Add(
+                new ErrorRecord(e, "BasicConsumeError", ErrorCategory.NotSpecified, _queueName)
+            );
             SetJobState(JobState.Failed);
+            return;
         }
+
+        _ = Task.Run(async () =>
+        {
+            _windowWatcher = new WindowWatcher(UnregisterAfterWindow);
+            await _windowWatcher.WaitAsync(_cts.Token);
+            Debug.Add(
+                new DebugRecord(
+                    "The 'UnregisterAfterWindow' interval has elapsed. Canceling the consumer."
+                )
+            );
+            await _channel.BasicCancelAsync(_consumerTag, false, _cts.Token);
+        });
     }
 
     public override async void StopJob()
@@ -109,7 +151,12 @@ public sealed class ConsumerJob : Job
             }
             catch (Exception e)
             {
-                var er = new ErrorRecord(e, "BasicCancelError", ErrorCategory.NotSpecified, _consumerTag);
+                var er = new ErrorRecord(
+                    e,
+                    "BasicCancelError",
+                    ErrorCategory.NotSpecified,
+                    _consumerTag
+                );
                 Error.Add(er);
             }
         }
@@ -117,5 +164,44 @@ public sealed class ConsumerJob : Job
         {
             SetJobState(JobState.Stopped);
         }
+    }
+}
+
+internal sealed class WindowWatcher : IDisposable
+{
+    private readonly TaskCompletionSource _tcs;
+    private readonly ITimer _timer;
+    private readonly TimeSpan _window;
+
+    public bool IsFinished => _tcs.Task.IsCompletedSuccessfully;
+
+    public WindowWatcher(TimeSpan window, TimeProvider time)
+    {
+        _tcs = new();
+        _window = window;
+        _timer = time.CreateTimer(OnWindowElapse, null, window, Timeout.InfiniteTimeSpan);
+    }
+
+    public WindowWatcher(TimeSpan window)
+        : this(window, TimeProvider.System) { }
+
+    public void Reset()
+    {
+        _timer.Change(_window, Timeout.InfiniteTimeSpan);
+    }
+
+    public async Task WaitAsync(CancellationToken cancellationToken)
+    {
+        await _tcs.Task.WaitAsync(cancellationToken);
+    }
+
+    private void OnWindowElapse(object? state)
+    {
+        _tcs.TrySetResult();
+    }
+
+    public void Dispose()
+    {
+        _timer.Dispose();
     }
 }

@@ -12,13 +12,21 @@ public sealed class StartRabbitMqConsumerCommand : RmqCmdlet
     public string Queue { get; set; } = string.Empty;
 
     /// <summary>
-    /// Unregister the consuemr after this number of messages have been processed. The consumer may continue
+    /// Unregister the consumer after this number of messages have been processed. The consumer may continue
     /// running after this number of messages have been processed if there were messages in-flight.
     /// </summary>
     [Parameter]
     [ValidateRange(1ul, ulong.MaxValue)]
     [Alias("MaxCount")]
     public ulong UnregisterAfterCount { get; set; } = ulong.MaxValue;
+
+    /// <summary>
+    /// Unregister the consumer after this interval has elapsed with no message to consume being delivered
+    /// to the queue.
+    /// </summary>
+    [Parameter]
+    [ValidateRange("00:00:01", "10675199.02:48:05.4775807")]
+    public TimeSpan UnregisterAfterWindow { get; set; } = TimeSpan.MaxValue;
 
     [Parameter(Mandatory = true)]
     [RabbitConnectionCompleter]
@@ -29,7 +37,11 @@ public sealed class StartRabbitMqConsumerCommand : RmqCmdlet
     {
         var channel = await Connection.GetDefaultChannel(StoppingToken).ConfigureAwait(false);
 
-        var job = new ConsumerJob(channel, Queue) { UnregisterAfterCount = UnregisterAfterCount };
+        var job = new ConsumerJob(channel, Queue)
+        {
+            UnregisterAfterCount = UnregisterAfterCount,
+            UnregisterAfterWindow = UnregisterAfterWindow,
+        };
         JobRepository.Add(job);
         await WriteObjectAsync(job).ConfigureAwait(false);
         _ = job.StartJobAsync();
