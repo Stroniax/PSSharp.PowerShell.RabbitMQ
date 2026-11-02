@@ -173,6 +173,16 @@ public sealed class ConsumerJob : Job
             SetJobState(JobState.Stopped);
         }
     }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing)
+        {
+            _windowWatcher?.Dispose();
+            _cts?.Dispose();
+        }
+    }
 }
 
 internal sealed class WindowWatcher : IDisposable
