@@ -50,7 +50,15 @@ public sealed class ConsumerJob : Job
         consumer.ReceivedAsync += async (sender, e) =>
         {
             _windowWatcher?.Reset();
-            Output.Add(PSObject.AsPSObject(e));
+
+            if (PSRabbitMessage.FromDeliver(e, null, out var message, out var error))
+            {
+                Output.Add(new PSObject(message));
+            }
+            else
+            {
+                Error.Add(error);
+            }
 
             if (Interlocked.Increment(ref _receivedCount) == UnregisterAfterCount)
             {

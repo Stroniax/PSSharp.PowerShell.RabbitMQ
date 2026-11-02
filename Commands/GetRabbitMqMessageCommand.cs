@@ -1,7 +1,7 @@
-﻿using Microsoft.PowerShell.Commands;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Management.Automation;
 using System.Text;
+using Microsoft.PowerShell.Commands;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
@@ -34,7 +34,6 @@ public sealed class GetRabbitMqMessageCommand : RmqCmdlet
     [RabbitConnection]
     public PSRabbitConnection Connection { get; set; } = null!;
 
-
     protected override async Task ProcessRecordAsync()
     {
         var channel = await Connection.GetDefaultChannel(StoppingToken).ConfigureAwait(false);
@@ -54,14 +53,13 @@ public sealed class GetRabbitMqMessageCommand : RmqCmdlet
             return;
         }
 
-        var (psMessage, error) = await PSRabbitMessage.FromGet(message, Serialization, StoppingToken).ConfigureAwait(false);
-        if (error is not null)
+        if (PSRabbitMessage.FromGet(message, Serialization, out var psmessage, out var error))
         {
-            await WriteErrorAsync(error);
+            await WriteObjectAsync(psmessage);
         }
         else
         {
-            await WriteObjectAsync(psMessage);
+            await WriteErrorAsync(error);
         }
     }
 }
