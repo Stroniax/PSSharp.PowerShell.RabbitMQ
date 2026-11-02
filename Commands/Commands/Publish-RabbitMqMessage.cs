@@ -17,11 +17,13 @@ public sealed class PublishRabbitMqMessageCommand : RmqCmdlet
     public string RoutingKey { get; set; } = string.Empty;
 
     [Parameter(ValueFromPipelineByPropertyName = true)]
+    [ArgumentCompletions("''")]
     public string Exchange { get; set; } = string.Empty;
 
     [Parameter(ValueFromPipeline = true, Mandatory = true)]
     [AllowNull, AllowEmptyString, AllowEmptyCollection]
     [Alias("InputObject")]
+    [ArgumentCompletions("$_")]
     public PSObject? Payload { get; set; }
 
     [Parameter]
@@ -34,24 +36,30 @@ public sealed class PublishRabbitMqMessageCommand : RmqCmdlet
     public PSRabbitConnection Connection { get; set; } = null!;
 
     [Parameter]
+    [ArgumentCompletions("''")]
     public string? AppId { get; set; }
 
     /// <summary>
     /// Inferred based on <see cref="Serialization"/> if not specified.
     /// </summary>
     [Parameter]
+    [ArgumentCompletions("text/plain")]
     public string? ContentType { get; set; }
 
     [Parameter]
+    [ArgumentCompletions("utf-8")]
     public string? ContentEncoding { get; set; }
 
     [Parameter]
+    [ArgumentCompletions("''")]
     public string? ClusterId { get; set; }
 
     [Parameter]
+    [ArgumentCompletions("''")]
     public string? CorrelationId { get; set; }
 
     [Parameter]
+    [ArgumentCompletions("''")]
     public string? MessageId { get; set; }
 
     [Parameter]
@@ -59,6 +67,7 @@ public sealed class PublishRabbitMqMessageCommand : RmqCmdlet
 
     [Parameter]
     [ValidateRange("00:00:00", "10675199.02:48:05.4775807")] // TimeSpan.MaxValue
+    [ArgumentCompletions("00:00:05", "00:05:00", "05:00:00")]
     public TimeSpan? Expiration { get; set; }
 
     [Parameter]
@@ -66,21 +75,27 @@ public sealed class PublishRabbitMqMessageCommand : RmqCmdlet
 
     [Parameter]
     [ValidateRange(0, 9)]
+    [ArgumentCompletions("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")]
     public byte Priority { get; set; }
 
     [Parameter]
+    [ArgumentCompletions("''")]
     public string? Type { get; set; }
 
     [Parameter]
+    [ArgumentCompletions("''")]
     public string? UserId { get; set; }
 
     [Parameter]
+    [ArgumentCompletions("(Get-Date)")]
     public DateTime Timestamp { get; set; } = DateTime.Now;
 
     [Parameter]
+    [ArgumentCompletions("@{}")]
     public Hashtable? Headers { get; set; }
 
     [Parameter]
+    [ArgumentCompletions("$null", "\"${ExchangeType}://$ExchangeName/$RoutingKey\"")]
     public PublicationAddress? ReplyTo { get; set; }
 
     /// <summary>

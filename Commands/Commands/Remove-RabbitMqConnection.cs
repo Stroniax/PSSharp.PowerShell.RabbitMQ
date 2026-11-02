@@ -2,7 +2,12 @@
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
-[Cmdlet(VerbsCommon.Remove, Noun, DefaultParameterSetName = SessionParameterSet, SupportsShouldProcess = true)]
+[Cmdlet(
+    VerbsCommon.Remove,
+    Noun,
+    DefaultParameterSetName = SessionParameterSet,
+    SupportsShouldProcess = true
+)]
 public sealed class RemoveRabbitMqConnectionCommand : RmqCmdlet
 {
     private const string Noun = "RabbitMqConnection";
@@ -11,12 +16,22 @@ public sealed class RemoveRabbitMqConnectionCommand : RmqCmdlet
     public const string SessionParameterSet = "Session";
     public const string InstanceParameterSet = "InstanceId";
 
-    [Parameter(ParameterSetName = SessionParameterSet, Mandatory = true, Position = 0, ValueFromPipeline = true)]
+    [Parameter(
+        ParameterSetName = SessionParameterSet,
+        Mandatory = true,
+        Position = 0,
+        ValueFromPipeline = true
+    )]
     [RabbitConnection]
     [RabbitConnectionCompleter]
     public PSRabbitConnection? Connection { get; set; }
 
-    [Parameter(ParameterSetName = InstanceParameterSet, Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+    [Parameter(
+        ParameterSetName = InstanceParameterSet,
+        Mandatory = true,
+        Position = 0,
+        ValueFromPipelineByPropertyName = true
+    )]
     [RabbitConnectionCompleter]
     public Guid InstanceId { get; init; }
 
@@ -28,8 +43,15 @@ public sealed class RemoveRabbitMqConnectionCommand : RmqCmdlet
         {
             if (!_store.Remove(Connection))
             {
-                var ex = new InvalidOperationException("The RabbitMQ connection has already been removed.");
-                var er = new ErrorRecord(ex, "AlreadyRemoved", ErrorCategory.InvalidArgument, Connection);
+                var ex = new InvalidOperationException(
+                    "The RabbitMQ connection has already been removed."
+                );
+                var er = new ErrorRecord(
+                    ex,
+                    "AlreadyRemoved",
+                    ErrorCategory.InvalidArgument,
+                    Connection
+                );
                 await WriteErrorAsync(er).ConfigureAwait(false);
             }
 
@@ -53,10 +75,19 @@ public sealed class RemoveRabbitMqConnectionCommand : RmqCmdlet
 
         if (!found)
         {
-            var ex = new ItemNotFoundException("A RabbitMQ connection with the specified InstanceId does not exist.");
-            var er = new ErrorRecord(ex, "InstanceIdNotFound", ErrorCategory.ObjectNotFound, InstanceId)
+            var ex = new ItemNotFoundException(
+                "A RabbitMQ connection with the specified InstanceId does not exist."
+            );
+            var er = new ErrorRecord(
+                ex,
+                "InstanceIdNotFound",
+                ErrorCategory.ObjectNotFound,
+                InstanceId
+            )
             {
-                ErrorDetails = new($"A RabbitMQ connection with the specified InstanceId \"{InstanceId}\" does not exist.")
+                ErrorDetails = new(
+                    $"A RabbitMQ connection with the specified InstanceId \"{InstanceId}\" does not exist."
+                ),
             };
             await WriteErrorAsync(er).ConfigureAwait(false);
         }
