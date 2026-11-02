@@ -36,10 +36,10 @@ public sealed class GetRabbitMqMessageCommand : RmqCmdlet
 
     protected override async Task ProcessRecordAsync()
     {
-        var channel = await Connection.GetDefaultChannel(StoppingToken).ConfigureAwait(false);
+        var channel = await Connection.GetDefaultChannel(PipelineStopToken).ConfigureAwait(false);
 
         var autoAck = !ManualAck.IsPresent;
-        var message = await channel.BasicGetAsync(Queue, autoAck, StoppingToken);
+        var message = await channel.BasicGetAsync(Queue, autoAck, PipelineStopToken);
 
         if (message is null && Mandatory.IsPresent)
         {

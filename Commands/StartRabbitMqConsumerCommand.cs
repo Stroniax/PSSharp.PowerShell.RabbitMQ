@@ -35,7 +35,7 @@ public sealed class StartRabbitMqConsumerCommand : RmqCmdlet
 
     protected override async Task ProcessRecordAsync()
     {
-        var channel = await Connection.GetDefaultChannel(StoppingToken).ConfigureAwait(false);
+        var channel = await Connection.GetDefaultChannel(PipelineStopToken).ConfigureAwait(false);
 
         var job = new ConsumerJob(channel, Queue)
         {

@@ -200,7 +200,9 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
         IConnection connection;
         try
         {
-            connection = await factory.CreateConnectionAsync(StoppingToken).ConfigureAwait(false);
+            connection = await factory
+                .CreateConnectionAsync(PipelineStopToken)
+                .ConfigureAwait(false);
         }
         catch (Exception ex)
         {

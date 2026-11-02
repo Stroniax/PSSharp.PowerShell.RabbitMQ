@@ -24,7 +24,8 @@ public sealed class PublishRabbitMqMessageCommand : RmqCmdlet
     public PSObject? Payload { get; set; }
 
     [Parameter]
-    public PSRabbitMessageSerialization Serialization { get; set; } = PSRabbitMessageSerialization.Clixml;
+    public PSRabbitMessageSerialization Serialization { get; set; } =
+        PSRabbitMessageSerialization.Clixml;
 
     [Parameter(Mandatory = true)]
     [RabbitConnectionCompleter]
@@ -108,7 +109,7 @@ public sealed class PublishRabbitMqMessageCommand : RmqCmdlet
 
     protected override async Task ProcessRecordAsync()
     {
-        var channel = await Connection.GetDefaultChannel(StoppingToken).ConfigureAwait(false);
+        var channel = await Connection.GetDefaultChannel(PipelineStopToken).ConfigureAwait(false);
 
         string? contentType = null;
         byte[] body;
@@ -116,13 +117,39 @@ public sealed class PublishRabbitMqMessageCommand : RmqCmdlet
         {
             (contentType, body) = Serialization switch
             {
-                PSRabbitMessageSerialization.Clixml => ("application/clixml+xml", Encoding.UTF8.GetBytes(PSSerializer.Serialize(Payload))),
-                PSRabbitMessageSerialization.Json => ("application/json", Encoding.UTF8.GetBytes(
-                    JsonObject.ConvertToJson(Payload, new(100, true, true, StringEscapeHandling.EscapeNonAscii, this, PipelineStopToken))
-                )),
-                PSRabbitMessageSerialization.Utf8 => ("text/plain", Encoding.UTF8.GetBytes(LanguagePrimitives.ConvertTo<string>(Payload) ?? string.Empty)),
-                PSRabbitMessageSerialization.Binary => ("application/octet-stream", LanguagePrimitives.ConvertTo<byte[]>(Payload)),
-                _ => throw new NotSupportedException($"Serialization type {Serialization} is not supported.")
+                PSRabbitMessageSerialization.Clixml => (
+                    "application/clixml+xml",
+                    Encoding.UTF8.GetBytes(PSSerializer.Serialize(Payload))
+                ),
+                PSRabbitMessageSerialization.Json => (
+                    "application/json",
+                    Encoding.UTF8.GetBytes(
+                        JsonObject.ConvertToJson(
+                            Payload,
+                            new(
+                                100,
+                                true,
+                                true,
+                                StringEscapeHandling.EscapeNonAscii,
+                                this,
+                                PipelineStopToken
+                            )
+                        )
+                    )
+                ),
+                PSRabbitMessageSerialization.Utf8 => (
+                    "text/plain",
+                    Encoding.UTF8.GetBytes(
+                        LanguagePrimitives.ConvertTo<string>(Payload) ?? string.Empty
+                    )
+                ),
+                PSRabbitMessageSerialization.Binary => (
+                    "application/octet-stream",
+                    LanguagePrimitives.ConvertTo<byte[]>(Payload)
+                ),
+                _ => throw new NotSupportedException(
+                    $"Serialization type {Serialization} is not supported."
+                ),
             };
         }
         catch (OperationCanceledException)
@@ -155,7 +182,15 @@ public sealed class PublishRabbitMqMessageCommand : RmqCmdlet
             ReplyToAddress = ReplyTo,
         };
 
-        if (!await InvokeAsync(() => ShouldProcess($"payload {body.Length} byte(s) to exchange {Exchange}, routing key {RoutingKey}", "publish message")).ConfigureAwait(false))
+        if (
+            !await InvokeAsync(() =>
+                    ShouldProcess(
+                        $"payload {body.Length} byte(s) to exchange {Exchange}, routing key {RoutingKey}",
+                        "publish message"
+                    )
+                )
+                .ConfigureAwait(false)
+        )
         {
             return;
         }
@@ -168,7 +203,7 @@ public sealed class PublishRabbitMqMessageCommand : RmqCmdlet
                 Mandatory.IsPresent,
                 basicProperties,
                 body,
-                StoppingToken
+                PipelineStopToken
             );
         }
         catch (Exception ex)

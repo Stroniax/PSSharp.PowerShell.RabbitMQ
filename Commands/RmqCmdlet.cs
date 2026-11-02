@@ -4,29 +4,18 @@ using System.Runtime.CompilerServices;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
-public abstract class RmqCmdlet : PSCmdlet, IDisposable
+public abstract class RmqCmdlet : PSCmdlet
 {
-    /// <summary>
-    /// A token cancelled when the cmdlet is stopped.
-    /// </summary>
-    private readonly CancellationTokenSource _stopped = new();
     private BlockingCollection<Action> _queue = [];
-    private bool _isDisposed;
-
-    /// <summary>
-    /// A cancellation token that is cancelled when the cmdlet is stopped.
-    /// The token is not triggered if the cmdlet stops due to exception nor completion.
-    /// </summary>
-    protected CancellationToken StoppingToken => _stopped.Token;
 
     protected async Task WriteObjectAsync(object? value)
     {
-        await InvokeAsync(() => WriteObject(value));
+        await InvokeAsync(() => WriteObject(value)).ConfigureAwait(false);
     }
 
     protected async Task WriteErrorAsync(ErrorRecord error)
     {
-        await InvokeAsync(() => WriteError(error));
+        await InvokeAsync(() => WriteError(error)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -73,7 +62,7 @@ public abstract class RmqCmdlet : PSCmdlet, IDisposable
 
     private void BlockAndRun()
     {
-        foreach (var item in _queue.GetConsumingEnumerable(_stopped.Token))
+        foreach (var item in _queue.GetConsumingEnumerable(PipelineStopToken))
         {
             item();
         }
@@ -130,35 +119,5 @@ public abstract class RmqCmdlet : PSCmdlet, IDisposable
         _queue = [];
         EndProcessingAsync().ContinueWith(OnTaskFinished);
         BlockAndRun();
-    }
-
-    protected override void StopProcessing()
-    {
-        base.StopProcessing();
-        _stopped.Cancel();
-    }
-
-    protected void Dispose(bool isDisposing)
-    {
-        if (isDisposing)
-        {
-            _stopped.Dispose();
-        }
-    }
-
-    public void Dispose()
-    {
-        if (_isDisposed)
-        {
-            return;
-        }
-        _isDisposed = true;
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    ~RmqCmdlet()
-    {
-        Dispose(false);
     }
 }
