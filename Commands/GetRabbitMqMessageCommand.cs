@@ -11,6 +11,7 @@ public sealed class GetRabbitMqMessageCommand : RmqCmdlet
     private const string Noun = "RabbitMqMessage";
 
     [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+    [QueueNameArgumentCompleter]
     [Alias("QueueName")]
     public string Queue { get; set; } = string.Empty;
 

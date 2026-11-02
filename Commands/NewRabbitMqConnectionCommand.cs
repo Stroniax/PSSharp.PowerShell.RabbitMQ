@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Diagnostics;
 using System.Management.Automation;
+using System.Management.Automation.Language;
 using RabbitMQ.Client;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
@@ -28,6 +29,7 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
     )]
     [ValidateAbsoluteUri]
     [ValidateUriScheme("amqp", "amqps")]
+    [ArgumentCompletions("amqp://guest:guest@localhost:5672/")]
     public Uri? Uri { get; set; }
 
     [Parameter(
@@ -36,6 +38,7 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
         Position = 0,
         ValueFromPipeline = true
     )]
+    [ArgumentCompletions("$")]
     public ConnectionFactory? Factory { get; set; }
 
     [Parameter(
@@ -44,6 +47,7 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
         Position = 0,
         ValueFromPipelineByPropertyName = true
     )]
+    [ArgumentCompletions("localhost")]
     public string? Hostname { get; set; }
 
     [Parameter(
@@ -51,6 +55,7 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
         Position = 1,
         ValueFromPipelineByPropertyName = true
     )]
+    [ArgumentCompletions("5672")]
     public ushort Port { get; set; } = 5672;
 
     [Parameter(
@@ -58,6 +63,7 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
         Position = 2,
         ValueFromPipelineByPropertyName = true
     )]
+    [ArgumentCompletions("/")]
     public string VirtualHost { get; set; } = "/";
 
     /// <summary>
@@ -65,13 +71,16 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
     /// </summary>
     [Parameter(ParameterSetName = ArgsParameterSet, Position = 3)]
     [Parameter(ParameterSetName = UriParameterSet, Position = 1)]
+    [ArgumentCompletions("guest")]
     [Credential]
     public PSCredential? Credential { get; set; }
 
     [Parameter(ParameterSetName = ArgsParameterSet)]
+    [ArgumentCompletions("@{}")]
     public Hashtable? ClientProperties { get; set; }
 
     [Parameter]
+    [ArgumentCompletions("PSSharp.PowerShell.RabbitMQ")]
     public string ClientProvidedName { get; set; } = "PSSharp.PowerShell.RabbitMQ";
 
     /// <summary>
@@ -79,6 +88,7 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
     /// </summary>
     [Parameter]
     [ValidateNotNullOrWhiteSpace]
+    [ConnectionNameFromHostNameArgumentCompleter]
     public string? Name { get; set; }
 
     private readonly RabbitConnectionStore _store = RabbitConnectionStore.Current;
@@ -243,5 +253,81 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
         return InvokeAsync(() =>
             WriteProgress(new(1) { RecordType = ProgressRecordType.Completed })
         );
+    }
+}
+
+file sealed class ConnectionNameFromHostNameArgumentCompleterAttribute
+    : ArgumentCompleterFactoryAttribute,
+        IArgumentCompleter
+{
+    public IEnumerable<CompletionResult> CompleteArgument(
+        string commandName,
+        string parameterName,
+        string wordToComplete,
+        CommandAst commandAst,
+        IDictionary fakeBoundParameters
+    )
+    {
+        var quote = ArgumentCompletionQuote.Extract(wordToComplete, out wordToComplete);
+        var toComplete = WildcardPattern.Get(wordToComplete + '*', WildcardOptions.IgnoreCase);
+
+        if (fakeBoundParameters.Contains("Hostname"))
+        {
+            var hostname =
+                LanguagePrimitives.ConvertTo<string>(fakeBoundParameters["Hostname"])
+                ?? string.Empty;
+            if (!toComplete.IsMatch(hostname))
+            {
+                return [];
+            }
+
+            return
+            [
+                new CompletionResult(
+                    quote.Wrap(hostname),
+                    hostname,
+                    CompletionResultType.ParameterValue,
+                    hostname
+                ),
+            ];
+        }
+        else if (fakeBoundParameters.Contains("Uri"))
+        {
+            var uriArg = fakeBoundParameters["Uri"];
+            if (!LanguagePrimitives.TryConvertTo<Uri>(uriArg, out var uri))
+            {
+                return [];
+            }
+            return
+            [
+                new CompletionResult(
+                    quote.Wrap(uri.Host),
+                    uri.Host,
+                    CompletionResultType.ParameterValue,
+                    uri.Host
+                ),
+            ];
+        }
+        else if (toComplete.IsMatch("localhost"))
+        {
+            return
+            [
+                new(
+                    quote.Wrap("localhost"),
+                    "localhost",
+                    CompletionResultType.ParameterValue,
+                    "localhost"
+                ),
+            ];
+        }
+        else
+        {
+            return [];
+        }
+    }
+
+    public override IArgumentCompleter Create()
+    {
+        return this;
     }
 }

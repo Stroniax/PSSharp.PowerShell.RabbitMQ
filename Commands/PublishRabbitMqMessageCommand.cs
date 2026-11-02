@@ -13,6 +13,7 @@ public sealed class PublishRabbitMqMessageCommand : RmqCmdlet
     private const string Noun = "RabbitMqMessage";
 
     [Parameter(ValueFromPipelineByPropertyName = true)]
+    [QueueNameArgumentCompleter]
     public string RoutingKey { get; set; } = string.Empty;
 
     [Parameter(ValueFromPipelineByPropertyName = true)]

@@ -8,6 +8,7 @@ public sealed class StartRabbitMqConsumerCommand : RmqCmdlet
     public const string Noun = "RabbitMqConsumer";
 
     [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+    [QueueNameArgumentCompleter]
     [Alias("QueueName")]
     public string Queue { get; set; } = string.Empty;
 
@@ -17,6 +18,7 @@ public sealed class StartRabbitMqConsumerCommand : RmqCmdlet
     /// </summary>
     [Parameter]
     [ValidateRange(1ul, ulong.MaxValue)]
+    [ArgumentCompletions("1", "100", "1000")]
     [Alias("MaxCount")]
     public ulong UnregisterAfterCount { get; set; } = ulong.MaxValue;
 
@@ -25,6 +27,7 @@ public sealed class StartRabbitMqConsumerCommand : RmqCmdlet
     /// to the queue.
     /// </summary>
     [Parameter]
+    [ArgumentCompletions("00:00:05", "00:00:30", "00:01:00")]
     [ValidateRange("00:00:01", "10675199.02:48:05.4775807")]
     public TimeSpan UnregisterAfterWindow { get; set; } = TimeSpan.MaxValue;
 
