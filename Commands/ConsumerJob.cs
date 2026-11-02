@@ -44,6 +44,10 @@ public sealed class ConsumerJob : Job
         {
             Debug.Add(new DebugRecord("Consumer RegisteredAsync at " + DateTime.Now.ToString("o")));
             SetJobState(JobState.Running);
+
+            // First notification so that the timer starts ticking
+            _windowWatcher?.Reset();
+
             return Task.CompletedTask;
         };
 
@@ -182,44 +186,5 @@ public sealed class ConsumerJob : Job
             _windowWatcher?.Dispose();
             _cts?.Dispose();
         }
-    }
-}
-
-internal sealed class WindowWatcher : IDisposable
-{
-    private readonly TaskCompletionSource _tcs;
-    private readonly ITimer _timer;
-    private readonly TimeSpan _window;
-
-    public bool IsFinished => _tcs.Task.IsCompletedSuccessfully;
-
-    public WindowWatcher(TimeSpan window, TimeProvider time)
-    {
-        _tcs = new();
-        _window = window;
-        _timer = time.CreateTimer(OnWindowElapse, null, window, Timeout.InfiniteTimeSpan);
-    }
-
-    public WindowWatcher(TimeSpan window)
-        : this(window, TimeProvider.System) { }
-
-    public void Reset()
-    {
-        _timer.Change(_window, Timeout.InfiniteTimeSpan);
-    }
-
-    public async Task WaitAsync(CancellationToken cancellationToken)
-    {
-        await _tcs.Task.WaitAsync(cancellationToken);
-    }
-
-    private void OnWindowElapse(object? state)
-    {
-        _tcs.TrySetResult();
-    }
-
-    public void Dispose()
-    {
-        _timer.Dispose();
     }
 }
