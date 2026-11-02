@@ -18,6 +18,7 @@ public sealed class ConsumerJob : Job
 
     private ulong _receivedCount;
 
+    /// <param name="channel">Owned by this job. Disposed when the job is disposed.</param>
     public ConsumerJob(IChannel channel, string queueName)
     {
         _channel = channel;
@@ -189,6 +190,7 @@ public sealed class ConsumerJob : Job
         base.Dispose(disposing);
         if (disposing)
         {
+            _channel.Dispose();
             _windowWatcher?.Dispose();
             _cts?.Dispose();
         }

@@ -171,13 +171,13 @@ public sealed record PSRabbitMessage
         return true;
     }
 
-    public async Task AckAsync()
+    public async Task AckAsync(CancellationToken cancellationToken = default)
     {
-        await Channel.BasicAckAsync(DeliveryTag, false, CancellationToken.None);
+        await Channel.BasicAckAsync(DeliveryTag, false, cancellationToken);
     }
 
-    public async Task NackAsync(bool requeue = false)
+    public async Task NackAsync(bool requeue = false, CancellationToken cancellationToken = default)
     {
-        await Channel.BasicNackAsync(DeliveryTag, false, requeue, CancellationToken.None);
+        await Channel.BasicNackAsync(DeliveryTag, false, requeue, cancellationToken);
     }
 }

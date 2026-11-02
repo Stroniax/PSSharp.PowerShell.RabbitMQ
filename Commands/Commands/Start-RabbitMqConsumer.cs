@@ -45,6 +45,8 @@ public sealed class StartRabbitMqConsumerCommand : RmqCmdlet
 
     protected override async Task ProcessRecordAsync()
     {
+        // The job owns the channel, so create a new one for it.
+        // This also prevents any error in the job from breaking other users of the DefaultChannel.
         var channel = await Connection
             .GetConnection()
             .CreateChannelAsync(null, PipelineStopToken)
