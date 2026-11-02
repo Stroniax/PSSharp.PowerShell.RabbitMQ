@@ -19,7 +19,11 @@ public sealed class RabbitConnectionStore
     /// <summary>
     /// Todo: use <c>AsyncLocal</c> in some way so that this works across async contexts.
     /// </summary>
-    internal static RabbitConnectionStore Current => _stores.GetOrAdd(Runspace.DefaultRunspace ?? throw new Exception("No default runspace"), static _ => new());
+    internal static RabbitConnectionStore Current =>
+        _stores.GetOrAdd(
+            Runspace.DefaultRunspace ?? throw new Exception("No default runspace"),
+            static _ => new()
+        );
 
     public IEnumerable<PSRabbitConnection> GetConnections()
     {
@@ -30,12 +34,16 @@ public sealed class RabbitConnectionStore
     {
         if (HasSessionWithName(session.Name))
         {
-            throw new InvalidOperationException("A session with the provided name already exists in the store.");
+            throw new InvalidOperationException(
+                "A session with the provided name already exists in the store."
+            );
         }
 
         if (!_store.TryAdd(session.InstanceId, session))
         {
-            throw new InvalidOperationException("A session with the provided InstanceId already exists in the store.");
+            throw new InvalidOperationException(
+                "A session with the provided InstanceId already exists in the store."
+            );
         }
     }
 
@@ -50,7 +58,8 @@ public sealed class RabbitConnectionStore
     /// </summary>
     /// <param name="name"></param>
     /// <returns></returns>
-    public bool HasSessionWithName(string name) => _store.Values.Any(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+    public bool HasSessionWithName(string name) =>
+        _store.Values.Any(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
 
     public override string ToString()
     {

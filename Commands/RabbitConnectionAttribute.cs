@@ -28,16 +28,13 @@ public sealed class RabbitConnectionAttribute : ArgumentTransformationAttribute
         return match.Count == 1 ? match[0] : instanceId;
     }
 
-    private static object? ConvertFromName(
-        RabbitConnectionStore store,
-        string name)
+    private static object? ConvertFromName(RabbitConnectionStore store, string name)
     {
-        var match = store.GetConnections().Where(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).ToList();
+        var match = store
+            .GetConnections()
+            .Where(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
 
-        return match.Count == 1
-                ? match[0]
-                : name;
+        return match.Count == 1 ? match[0] : name;
     }
-
-
 }

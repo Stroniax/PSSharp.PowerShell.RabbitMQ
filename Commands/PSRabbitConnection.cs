@@ -1,6 +1,6 @@
-﻿using RabbitMQ.Client;
+﻿using System.Diagnostics.CodeAnalysis;
+using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using System.Diagnostics.CodeAnalysis;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
@@ -11,10 +11,13 @@ public sealed class PSRabbitConnection(IConnection connection)
 
     internal async ValueTask<IChannel> GetDefaultChannel(CancellationToken cancellationToken)
     {
-        return _defaultChannel ??= await _connection.CreateChannelAsync(new(true, true), cancellationToken);
+        return _defaultChannel ??= await _connection.CreateChannelAsync(
+            new(true, true),
+            cancellationToken
+        );
     }
 
-    internal bool TryGetDefaultChannel([MaybeNullWhen(false)]out IChannel channel)
+    internal bool TryGetDefaultChannel([MaybeNullWhen(false)] out IChannel channel)
     {
         channel = _defaultChannel;
         return channel is not null;
