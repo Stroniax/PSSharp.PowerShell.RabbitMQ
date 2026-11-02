@@ -16,6 +16,14 @@ public sealed class ConsumerJob : Job
     public TimeSpan UnregisterAfterWindow { get; init; } = TimeSpan.MaxValue;
     public bool AutoAck { get; init; }
 
+    /// <summary>
+    /// How many messages to queue ('in-flight') in the job before waiting for the messages to be processed.
+    /// In auto-ack mode, this has virtually no effect. In manual-ack mode, this will prevent more than this
+    /// number of messages from sitting in the job until some of the messages have been processed. For batching,
+    /// it is necessary to set this to a higher number.
+    /// </summary>
+    public ushort PrefetchCount { get; init; } = 1;
+
     private ulong _receivedCount;
 
     /// <param name="channel">Owned by this job. Disposed when the job is disposed.</param>
@@ -128,6 +136,7 @@ public sealed class ConsumerJob : Job
 
         try
         {
+            await _channel.BasicQosAsync(0, PrefetchCount, false, _cts.Token);
             _consumerTag = await _channel.BasicConsumeAsync(
                 _queueName,
                 AutoAck,

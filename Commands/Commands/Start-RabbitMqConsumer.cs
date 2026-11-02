@@ -38,6 +38,19 @@ public sealed class StartRabbitMqConsumerCommand : RmqCmdlet
     [Parameter]
     public SwitchParameter ManualAck { get; init; }
 
+    /// <summary>
+    /// Sets the prefetch count on the channel that the consumer is registered with. Useful
+    /// primarily in manual-ack mode to prevent draining the queue and being unable to process
+    /// at the rate of delivery. Be aware, with auto-ack mode this is effectively ignored.
+    /// It must be set if you are attempting to batch processing, because the default is 1. When
+    /// the number of unacknowledged messages recevied by the consumer reaches this count, the
+    /// broker will not deliver more messages to the consumer until another message is processed
+    /// (via ack/nack).
+    /// </summary>
+    [Parameter]
+    [ArgumentCompletions("1", "10", "100", "1000")]
+    public ushort PrefetchCount { get; set; } = 1;
+
     [Parameter(Mandatory = true)]
     [RabbitConnectionCompleter]
     [RabbitConnection]
@@ -57,6 +70,7 @@ public sealed class StartRabbitMqConsumerCommand : RmqCmdlet
             UnregisterAfterCount = UnregisterAfterCount,
             UnregisterAfterWindow = UnregisterAfterWindow,
             AutoAck = !ManualAck.IsPresent,
+            PrefetchCount = PrefetchCount,
         };
         JobRepository.Add(job);
         await WriteObjectAsync(job).ConfigureAwait(false);
