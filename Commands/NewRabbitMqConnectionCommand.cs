@@ -1,12 +1,13 @@
-﻿using RabbitMQ.Client;
-using System.Collections;
+﻿using System.Collections;
 using System.Diagnostics;
 using System.Management.Automation;
-using System.Management.Automation.Runspaces;
+using RabbitMQ.Client;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
-[Cmdlet(VerbsCommon.New, Noun,
+[Cmdlet(
+    VerbsCommon.New,
+    Noun,
     ConfirmImpact = ConfirmImpact.Low,
     DefaultParameterSetName = UriParameterSet,
     RemotingCapability = RemotingCapability.OwnedByCommand,
@@ -19,19 +20,44 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
     public const string ArgsParameterSet = "Arg";
     public const string FactoryParameterSet = "Factory";
 
-    [Parameter(ParameterSetName = UriParameterSet, Mandatory = true, Position = 0, ValueFromPipeline = true)]
+    [Parameter(
+        ParameterSetName = UriParameterSet,
+        Mandatory = true,
+        Position = 0,
+        ValueFromPipeline = true
+    )]
+    [ValidateAbsoluteUri]
+    [ValidateUriScheme("amqp", "amqps")]
     public Uri? Uri { get; set; }
 
-    [Parameter(ParameterSetName = FactoryParameterSet, Mandatory = true, Position = 0, ValueFromPipeline = true)]
+    [Parameter(
+        ParameterSetName = FactoryParameterSet,
+        Mandatory = true,
+        Position = 0,
+        ValueFromPipeline = true
+    )]
     public ConnectionFactory? Factory { get; set; }
 
-    [Parameter(ParameterSetName = ArgsParameterSet, Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
+    [Parameter(
+        ParameterSetName = ArgsParameterSet,
+        Mandatory = true,
+        Position = 0,
+        ValueFromPipelineByPropertyName = true
+    )]
     public string? Hostname { get; set; }
 
-    [Parameter(ParameterSetName = ArgsParameterSet, Position = 1, ValueFromPipelineByPropertyName = true)]
+    [Parameter(
+        ParameterSetName = ArgsParameterSet,
+        Position = 1,
+        ValueFromPipelineByPropertyName = true
+    )]
     public ushort Port { get; set; } = 5672;
 
-    [Parameter(ParameterSetName = ArgsParameterSet, Position = 2, ValueFromPipelineByPropertyName = true)]
+    [Parameter(
+        ParameterSetName = ArgsParameterSet,
+        Position = 2,
+        ValueFromPipelineByPropertyName = true
+    )]
     public string VirtualHost { get; set; } = "/";
 
     /// <summary>
@@ -56,7 +82,6 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
     public string? Name { get; set; }
 
     private readonly RabbitConnectionStore _store = RabbitConnectionStore.Current;
-
 
     protected override async Task ProcessRecordAsync()
     {
@@ -84,8 +109,8 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
                         "ParameterSetNotImplemented",
                         ErrorCategory.NotSpecified,
                         ParameterSetName
-                        )
-                    );
+                    )
+                );
                 break;
         }
     }
@@ -96,18 +121,18 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
         name ??= Name;
         var autoMessage = " The name was auto-generated from the host name of the connection.";
 
-        var ex = new InvalidOperationException($"The name (alias) is associated with an existing RabbitMQ session.{autoMessage}");
-        var er = new ErrorRecord(
-            ex,
-            "NameExists",
-            ErrorCategory.InvalidArgument,
-            Name
-        )
+        var ex = new InvalidOperationException(
+            $"The name (alias) is associated with an existing RabbitMQ session.{autoMessage}"
+        );
+        var er = new ErrorRecord(ex, "NameExists", ErrorCategory.InvalidArgument, Name)
         {
-            ErrorDetails = new ErrorDetails($"The name (alias) \"{name}\" is associated with an existing RabbitMQ session.{autoMessage}")
+            ErrorDetails = new ErrorDetails(
+                $"The name (alias) \"{name}\" is associated with an existing RabbitMQ session.{autoMessage}"
+            )
             {
-                RecommendedAction = "Specify a different name using the \"-Name\" parameter, or remove the existing RabbitMQ connection using \"Remove-RabbitMqConnection\"."
-            }
+                RecommendedAction =
+                    "Specify a different name using the \"-Name\" parameter, or remove the existing RabbitMQ connection using \"Remove-RabbitMqConnection\".",
+            },
         };
         await WriteErrorAsync(er);
     }
@@ -134,7 +159,11 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
             ClientProvidedName = ClientProvidedName,
             UserName = Credential?.UserName ?? "guest",
             Password = Credential?.GetNetworkCredential().Password ?? "guest",
-            ClientProperties = ClientProperties?.Cast<DictionaryEntry>().ToDictionary(e => e.Key.ToString()!, e => e.Value) ?? [],
+            ClientProperties =
+                ClientProperties
+                    ?.Cast<DictionaryEntry>()
+                    .ToDictionary(e => e.Key.ToString()!, e => e.Value)
+                ?? [],
             Port = Port,
             VirtualHost = VirtualHost,
         };
@@ -143,11 +172,7 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
 
     private async Task ConnectUsingUri()
     {
-        var factory = new ConnectionFactory
-        {
-            Uri = Uri!,
-            ClientProvidedName = ClientProvidedName
-        };
+        var factory = new ConnectionFactory { Uri = Uri!, ClientProvidedName = ClientProvidedName };
         if (Credential is not null)
         {
             factory.UserName = Credential.UserName;
@@ -161,22 +186,60 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
         var name = Name ?? factory.HostName;
         if (_store.HasSessionWithName(name))
         {
-            await WriteErrorNameExists(name);
+            await WriteErrorNameExists(name).ConfigureAwait(false);
             return;
         }
-        
-        if (!await InvokeAsync(() => ShouldProcess(factory.HostName, "connect to RabbitMQ server")))
-        {
-            return;
-        }
-        
-        var connection = await factory.CreateConnectionAsync(StoppingToken);
-        var session = new PSRabbitConnection(connection)
-        {
-            Name = name
-        };
 
+        if (!await ConfirmConnect(factory).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        await ProgressConnecting(factory).ConfigureAwait(false);
+
+        IConnection connection;
+        try
+        {
+            connection = await factory.CreateConnectionAsync(StoppingToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            var er = new ErrorRecord(ex, "ConnectionError", ErrorCategory.ConnectionError, factory);
+            await WriteErrorAsync(er).ConfigureAwait(false);
+            return;
+        }
+        finally
+        {
+            await ProgressCompleted().ConfigureAwait(false);
+        }
+
+        var session = new PSRabbitConnection(connection) { Name = name };
         _store.Add(session);
-        await WriteObjectAsync(session);
+        await WriteObjectAsync(session).ConfigureAwait(false);
+    }
+
+    private Task<bool> ConfirmConnect(ConnectionFactory factory)
+    {
+        return InvokeAsync(() => ShouldProcess(factory.HostName, "connect to RabbitMQ server"));
+    }
+
+    private Task ProgressConnecting(ConnectionFactory factory)
+    {
+        return InvokeAsync(() =>
+            WriteProgress(
+                new(
+                    1,
+                    "Connecting to RabbitMQ server",
+                    $"Attempting connection to {factory.HostName}..."
+                )
+            )
+        );
+    }
+
+    private Task ProgressCompleted()
+    {
+        return InvokeAsync(() =>
+            WriteProgress(new(1) { RecordType = ProgressRecordType.Completed })
+        );
     }
 }

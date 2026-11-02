@@ -83,11 +83,11 @@ public abstract class RmqCmdlet : PSCmdlet, IDisposable
     {
         if (result.IsFaulted && !result.IsCanceled)
         {
+            var exn = result.Exception.GetBaseException();
+            var er = new ErrorRecord(exn, "AsyncCmdletException", ErrorCategory.NotSpecified, null);
             _queue.Add(() =>
             {
-                var exn = result.Exception.GetBaseException();
-                WriteError(new ErrorRecord(exn, "AsyncCmdletException", ErrorCategory.NotSpecified, null));
-                throw exn;
+                ThrowTerminatingError(er);
             });
         }
         _queue.CompleteAdding();
@@ -98,7 +98,7 @@ public abstract class RmqCmdlet : PSCmdlet, IDisposable
         return Task.CompletedTask;
     }
 
-    protected override sealed void BeginProcessing()
+    protected sealed override void BeginProcessing()
     {
         base.BeginProcessing();
         _queue ??= [];
@@ -110,7 +110,8 @@ public abstract class RmqCmdlet : PSCmdlet, IDisposable
     {
         return Task.CompletedTask;
     }
-    protected override sealed void ProcessRecord()
+
+    protected sealed override void ProcessRecord()
     {
         base.ProcessRecord();
         _queue = [];
