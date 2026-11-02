@@ -51,7 +51,7 @@ public sealed class ConsumerJob : Job
         {
             _windowWatcher?.Reset();
 
-            if (PSRabbitMessage.FromDeliver(e, null, out var message, out var error))
+            if (PSRabbitMessage.FromDeliver(_channel, e, null, out var message, out var error))
             {
                 Output.Add(new PSObject(message));
             }

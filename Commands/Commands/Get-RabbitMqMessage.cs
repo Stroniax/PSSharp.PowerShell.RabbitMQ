@@ -70,7 +70,15 @@ public sealed class GetRabbitMqMessageCommand : RmqCmdlet
             return;
         }
 
-        if (PSRabbitMessage.FromGet(message, Serialization, out var psmessage, out var error))
+        if (
+            PSRabbitMessage.FromGet(
+                channel,
+                message,
+                Serialization,
+                out var psmessage,
+                out var error
+            )
+        )
         {
             await WriteObjectAsync(psmessage);
         }

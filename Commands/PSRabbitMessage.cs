@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Management.Automation;
-using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using Microsoft.PowerShell.Commands;
 using RabbitMQ.Client;
@@ -11,7 +10,8 @@ namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 public sealed record PSRabbitMessage
 {
-    public PSRabbitMessage(
+    internal PSRabbitMessage(
+        IChannel channel,
         PSObject? body,
         string exchange,
         string routingKey,
@@ -21,6 +21,7 @@ public sealed record PSRabbitMessage
         byte[] rawBody
     )
     {
+        Channel = channel;
         Body = body;
         Exchange = exchange;
         RoutingKey = routingKey;
@@ -30,17 +31,19 @@ public sealed record PSRabbitMessage
         RawBody = rawBody;
     }
 
-    public PSObject? Body { get; init; }
-    public string Exchange { get; init; }
-    public string RoutingKey { get; init; }
-    public ulong DeliveryTag { get; init; }
-    public bool Redelivered { get; init; }
-    public IReadOnlyBasicProperties BasicProperties { get; init; }
-    public byte[] RawBody { get; init; }
+    internal IChannel Channel { get; }
 
+    public PSObject? Body { get; }
+    public string Exchange { get; }
+    public string RoutingKey { get; }
+    public ulong DeliveryTag { get; }
+    public bool Redelivered { get; }
+    public IReadOnlyBasicProperties BasicProperties { get; }
+    public byte[] RawBody { get; }
     public uint? MessageCount { get; init; }
 
     internal static bool FromGet(
+        IChannel channel,
         BasicGetResult get,
         PSRabbitMessageSerialization? serialization,
         [MaybeNullWhen(false)] out PSRabbitMessage message,
@@ -89,6 +92,7 @@ public sealed record PSRabbitMessage
         }
 
         message = new PSRabbitMessage(
+            channel,
             body,
             get.Exchange,
             get.RoutingKey,
@@ -105,6 +109,7 @@ public sealed record PSRabbitMessage
     }
 
     internal static bool FromDeliver(
+        IChannel channel,
         BasicDeliverEventArgs deliver,
         PSRabbitMessageSerialization? serialization,
         [MaybeNullWhen(false)] out PSRabbitMessage message,
@@ -153,6 +158,7 @@ public sealed record PSRabbitMessage
         }
 
         message = new PSRabbitMessage(
+            channel,
             body,
             deliver.Exchange,
             deliver.RoutingKey,
@@ -163,5 +169,15 @@ public sealed record PSRabbitMessage
         );
         error = null;
         return true;
+    }
+
+    public async Task AckAsync()
+    {
+        await Channel.BasicAckAsync(DeliveryTag, false, CancellationToken.None);
+    }
+
+    public async Task NackAsync(bool requeue = false)
+    {
+        await Channel.BasicNackAsync(DeliveryTag, false, requeue, CancellationToken.None);
     }
 }
