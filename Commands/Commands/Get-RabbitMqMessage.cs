@@ -1,7 +1,4 @@
-﻿using System.Diagnostics;
-using System.Management.Automation;
-using System.Text;
-using Microsoft.PowerShell.Commands;
+﻿using System.Management.Automation;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
@@ -21,6 +18,25 @@ public sealed class GetRabbitMqMessageCommand : RmqCmdlet
     [Parameter]
     public SwitchParameter Mandatory { get; set; }
 
+    /// <remarks>
+    /// This is a flip from RabbitMQ's default because in PowerShell it sort of makes more sense
+    /// to ack if the message is received, and require the user to do the more work of specifying
+    /// "manual ack" in addition to the user manually acking the message. This makes the workflow
+    /// easier to reason about for the average user:
+    /// <code>
+    /// Get-RabbitMqMessage | Invoke-Handler # Ack'd, next Get-* will not return the same message
+    ///
+    /// $Message = Get-RabbitMqMessage -ManualAck
+    /// try {
+    ///     Invoke-ComplexHandler1 $Message -ErrorAction 'Stop'
+    ///     Invoke-ComplexHandler2 $Message -ErrorAction 'Continue'
+    ///     Send-RabbitMqAck $Message
+    /// } catch {
+    ///     Send-RabbitMqNack $Message -Return
+    ///     throw
+    /// }
+    /// </code>
+    /// </remarks>
     [Parameter]
     public SwitchParameter ManualAck { get; set; }
 
