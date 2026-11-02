@@ -2,7 +2,7 @@
 using System.Management.Automation;
 using System.Runtime.CompilerServices;
 
-namespace PSSharp.PowerShell.RabbitMQ;
+namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 public abstract class RmqCmdlet : PSCmdlet, IDisposable
 {

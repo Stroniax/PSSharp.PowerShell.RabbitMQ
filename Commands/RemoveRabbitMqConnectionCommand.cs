@@ -1,6 +1,6 @@
 ﻿using System.Management.Automation;
 
-namespace PSSharp.PowerShell.RabbitMQ;
+namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 [Cmdlet(VerbsCommon.Remove, Noun, DefaultParameterSetName = SessionParameterSet, SupportsShouldProcess = true)]
 public sealed class RemoveRabbitMqConnectionCommand : RmqCmdlet

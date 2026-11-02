@@ -1,6 +1,6 @@
 ﻿using System.Management.Automation;
 
-namespace PSSharp.PowerShell.RabbitMQ;
+namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 /// <summary>
 /// Describes that a parameter ought to be a <see cref="PSRabbitConnection"/>. This attribute may provide

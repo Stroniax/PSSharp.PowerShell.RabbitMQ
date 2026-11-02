@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Management.Automation;
 using System.Text;
 
-namespace PSSharp.PowerShell.RabbitMQ;
+namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 public sealed record PSRabbitMessage
 {

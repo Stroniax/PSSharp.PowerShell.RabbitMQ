@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Management.Automation;
 using System.Text;
 
-namespace PSSharp.PowerShell.RabbitMQ;
+namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 [Cmdlet(VerbsCommon.Get, Noun)]
 public sealed class GetRabbitMqMessageCommand : RmqCmdlet

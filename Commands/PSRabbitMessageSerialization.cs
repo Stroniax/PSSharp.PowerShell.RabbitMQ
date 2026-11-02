@@ -1,4 +1,4 @@
-﻿namespace PSSharp.PowerShell.RabbitMQ;
+﻿namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 public enum PSRabbitMessageSerialization
 {

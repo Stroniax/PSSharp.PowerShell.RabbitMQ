@@ -5,7 +5,7 @@ using Microsoft.PowerShell.Commands;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 
-namespace PSSharp.PowerShell.RabbitMQ;
+namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 [Cmdlet(VerbsData.Publish, Noun, SupportsShouldProcess = true)]
 public sealed class PublishRabbitMqMessageCommand : RmqCmdlet

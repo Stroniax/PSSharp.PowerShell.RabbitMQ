@@ -3,7 +3,7 @@ using System.Management.Automation;
 using System.Management.Automation.Language;
 using System.Management.Automation.Runspaces;
 
-namespace PSSharp.PowerShell.RabbitMQ;
+namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 public sealed class RabbitConnectionCompleterAttribute : ArgumentCompleterFactoryAttribute, IArgumentCompleter
 {

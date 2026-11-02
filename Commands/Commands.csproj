@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>PSSharp.PowerShell.RabbitMQ</AssemblyName>
-    <RootNamespace>PSSharp.PowerShell.RabbitMQ</RootNamespace>
+    <AssemblyName>PSSharp.PowerShell.RabbitMQ.Commands</AssemblyName>
+    <RootNamespace>PSSharp.PowerShell.RabbitMQ.Commands</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

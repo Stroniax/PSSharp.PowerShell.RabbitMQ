@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Management.Automation;
 using System.Text;
 
-namespace PSSharp.PowerShell.RabbitMQ;
+namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 [Cmdlet(VerbsLifecycle.Start, Noun)]
 public sealed class StartRabbitMqConsumerCommand : RmqCmdlet

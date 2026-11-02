@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
 
-namespace PSSharp.PowerShell.RabbitMQ;
+namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 [Cmdlet(VerbsCommon.New, Noun,
     ConfirmImpact = ConfirmImpact.Low,

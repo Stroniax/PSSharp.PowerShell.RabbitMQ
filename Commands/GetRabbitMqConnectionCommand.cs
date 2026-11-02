@@ -1,6 +1,6 @@
 ﻿using System.Management.Automation;
 
-namespace PSSharp.PowerShell.RabbitMQ;
+namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 [Cmdlet(VerbsCommon.Get, Noun, DefaultParameterSetName = NameParameterSet)]
 [OutputType(typeof(PSRabbitConnection))]

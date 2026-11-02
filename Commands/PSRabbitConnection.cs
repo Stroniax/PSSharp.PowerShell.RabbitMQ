@@ -2,7 +2,7 @@
 using RabbitMQ.Client.Events;
 using System.Diagnostics.CodeAnalysis;
 
-namespace PSSharp.PowerShell.RabbitMQ;
+namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 public sealed class PSRabbitConnection(IConnection connection)
 {
