@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
+using System.Runtime.CompilerServices;
 
 namespace PSSharp.PowerShell.RabbitMQ;
 
@@ -11,14 +12,14 @@ namespace PSSharp.PowerShell.RabbitMQ;
 /// <param name="variables"></param>
 public sealed class RabbitConnectionStore
 {
-    private static readonly ConcurrentDictionary<Guid, RabbitConnectionStore> _stores = [];
+    private static readonly ConditionalWeakTable<Runspace, RabbitConnectionStore> _stores = [];
 
     private readonly ConcurrentDictionary<Guid, PSRabbitConnection> _store = [];
 
     /// <summary>
     /// Todo: use <c>AsyncLocal</c> in some way so that this works across async contexts.
     /// </summary>
-    internal static RabbitConnectionStore Current => _stores.GetOrAdd(Runspace.DefaultRunspace?.InstanceId ?? throw new Exception("No default runspace"), static _ => new());
+    internal static RabbitConnectionStore Current => _stores.GetOrAdd(Runspace.DefaultRunspace ?? throw new Exception("No default runspace"), static _ => new());
 
     public IEnumerable<PSRabbitConnection> GetConnections()
     {
