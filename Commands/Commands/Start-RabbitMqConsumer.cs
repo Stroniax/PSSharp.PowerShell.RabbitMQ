@@ -31,6 +31,13 @@ public sealed class StartRabbitMqConsumerCommand : RmqCmdlet
     [ValidateRange("00:00:01", "10675199.02:48:05.4775807")]
     public TimeSpan UnregisterAfterWindow { get; set; } = TimeSpan.MaxValue;
 
+    /// <remarks>
+    /// See <see cref="GetRabbitMqMessageCommand.ManualAck"/> for reasoning on inversion
+    /// of RabbitMQ's counterpart argument.
+    /// </remarks>
+    [Parameter]
+    public SwitchParameter ManualAck { get; init; }
+
     [Parameter(Mandatory = true)]
     [RabbitConnectionCompleter]
     [RabbitConnection]
@@ -38,12 +45,16 @@ public sealed class StartRabbitMqConsumerCommand : RmqCmdlet
 
     protected override async Task ProcessRecordAsync()
     {
-        var channel = await Connection.GetDefaultChannel(PipelineStopToken).ConfigureAwait(false);
+        var channel = await Connection
+            .GetConnection()
+            .CreateChannelAsync(null, PipelineStopToken)
+            .ConfigureAwait(false);
 
         var job = new ConsumerJob(channel, Queue)
         {
             UnregisterAfterCount = UnregisterAfterCount,
             UnregisterAfterWindow = UnregisterAfterWindow,
+            AutoAck = !ManualAck.IsPresent,
         };
         JobRepository.Add(job);
         await WriteObjectAsync(job).ConfigureAwait(false);

@@ -14,6 +14,7 @@ public sealed class ConsumerJob : Job
 
     public ulong UnregisterAfterCount { get; init; } = ulong.MaxValue;
     public TimeSpan UnregisterAfterWindow { get; init; } = TimeSpan.MaxValue;
+    public bool AutoAck { get; init; }
 
     private ulong _receivedCount;
 
@@ -126,7 +127,12 @@ public sealed class ConsumerJob : Job
 
         try
         {
-            _consumerTag = await _channel.BasicConsumeAsync(_queueName, true, consumer, _cts.Token);
+            _consumerTag = await _channel.BasicConsumeAsync(
+                _queueName,
+                AutoAck,
+                consumer,
+                _cts.Token
+            );
         }
         catch (Exception e)
         {
