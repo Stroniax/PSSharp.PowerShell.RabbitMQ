@@ -198,75 +198,19 @@ public sealed class SendRabbitMqMessageCommand : RmqCmdlet
             "The 'ManagementUri' parameter is mandatory for the management* parameter set."
         );
 
-        var uri = ManagementUri;
-        NetworkCredential? cred = null;
-        if (uri.UserInfo is not "")
-        {
-            var userPortion = uri.UserInfo.Split(':', 2);
-            uri = new UriBuilder(uri) { UserName = "", Password = "" }.Uri;
-            cred = new NetworkCredential(
-                userPortion[0],
-                userPortion.Length == 2 ? Uri.UnescapeDataString(userPortion[1]) : string.Empty
-            );
-        }
-        if (Credential is not null)
-        {
-            cred = Credential.GetNetworkCredential();
-        }
+        var cred = Credential?.GetNetworkCredential() ?? ManagementUri.GetNetworkCredential();
+        var uri = ManagementUri.WithoutCredential();
 
         if (cred is null)
         {
-            var ex = new ArgumentException("A credential must be provided for the Management API.");
-            var er = new ErrorRecord(
-                ex,
-                "CredentialRequired",
-                ErrorCategory.AuthenticationError,
-                ManagementUri
-            );
-            await WriteErrorAsync(er).ConfigureAwait(false);
+            await this.ManagementCredentialRequiredError(ManagementUri);
             return;
         }
 
-        using var http = new HttpClient()
-        {
-            BaseAddress = uri,
-            DefaultRequestHeaders =
-            {
-                Authorization = new AuthenticationHeaderValue(
-                    "Basic",
-                    Convert.ToBase64String(
-                        Encoding.ASCII.GetBytes($"{cred.UserName}:{cred.Password}")
-                    )
-                ),
-            },
-        };
+        using var client = new ManagementClient(uri, cred);
 
         SerializeBody(out var contentType, out var bytes);
-        var payload = Convert.ToBase64String(bytes);
-
-        var body = new
-        {
-            properties = new
-            {
-                app_id = AppId,
-                cluster_id = ClusterId,
-                content_type = ContentType ?? contentType,
-                content_encoding = ContentEncoding,
-                correlation_id = CorrelationId,
-                delivery_mode = DeliveryMode,
-                expiration = Expiration?.Milliseconds.ToString(),
-                message_id = MessageId,
-                priority = Priority,
-                type = Type,
-                user_id = UserId,
-                timestamp = new DateTimeOffset(Timestamp).ToUnixTimeSeconds(),
-                headers = HeadersDictionary(),
-                reply_to = ReplyTo,
-            },
-            routing_key = RoutingKey,
-            payload,
-            payload_encoding = "base64",
-        };
+        var basicProperties = BuildBasicProperties(contentType);
 
         if (
             !await InvokeAsync(() =>
@@ -281,109 +225,71 @@ public sealed class SendRabbitMqMessageCommand : RmqCmdlet
             return;
         }
 
-        var vhost = Uri.EscapeDataString(VHost);
-        var name = Uri.EscapeDataString(Exchange == "" ? "amq.default" : Exchange);
-        using var response = await http.PostAsJsonAsync(
-                $"/api/exchanges/{vhost}/{name}/publish",
-                body,
-                MANAGEMENT_JSON_OPTIONS,
-                PipelineStopToken
-            )
-            .ConfigureAwait(false);
-
-        if (!await CheckManagementHttpStatusCode(response).ConfigureAwait(false))
+        ManagementPublishResponse response;
+        try
         {
+            response = await client.PublishAsync(
+                VHost,
+                Exchange,
+                RoutingKey,
+                basicProperties,
+                bytes,
+                PipelineStopToken
+            );
+        }
+        catch (AuthenticationException ex)
+        {
+            var er = new ErrorRecord(
+                ex,
+                "ManagementUnauthorized",
+                ErrorCategory.AuthenticationError,
+                ManagementUri
+            );
+            await WriteErrorAsync(er);
             return;
         }
-
-        if (Mandatory)
+        catch (InvalidOperationException ex) when (ex.Data["StatusCode"] is 400)
         {
-            var responseContent = await response
-                .Content.ReadFromJsonAsync<JsonElement>(PipelineStopToken)
-                .ConfigureAwait(false);
-            if (!responseContent.GetProperty("routed").GetBoolean())
-            {
-                var ex = new Exception(
-                    "The published message was mandatory, but was not routed to any queue."
-                );
-                var er = new ErrorRecord(
-                    ex,
-                    "NotRouted",
-                    ErrorCategory.InvalidResult,
-                    responseContent
-                );
-                await WriteErrorAsync(er).ConfigureAwait(false);
-            }
-        }
-    }
-
-    private async Task<bool> CheckManagementHttpStatusCode(HttpResponseMessage response)
-    {
-        switch (response.StatusCode)
-        {
-            case HttpStatusCode.Unauthorized:
-                {
-                    var ex = new AuthenticationException(
-                        "The RabbitMQ management API returned status code 401 Unauthorized."
-                    );
-                    var er = new ErrorRecord(
-                        ex,
-                        "ManagementUnauthorized",
-                        ErrorCategory.AuthenticationError,
-                        ManagementUri
-                    );
-                    await WriteErrorAsync(er);
-                }
-                return false;
-            case HttpStatusCode.BadRequest:
-                {
-                    var ex = new InvalidOperationException(
-                        "The RabbitMQ management API returned status code 400 Bad Request."
-                    );
-                    var er = new ErrorRecord(
-                        ex,
-                        "ManagementBadRequest",
-                        ErrorCategory.NotSpecified,
-                        response.RequestMessage?.Content
-                    );
-                    await WriteErrorAsync(er);
-                }
-                return false;
-            case HttpStatusCode.Forbidden:
-            {
-                var ex = new UnauthorizedAccessException(
-                    "The RabbitMQ management API returned status code 403 Forbidden."
-                );
-                var er = new ErrorRecord(
-                    ex,
-                    "ManagementForbidden",
-                    ErrorCategory.PermissionDenied,
-                    ManagementUri
-                );
-                await WriteErrorAsync(er);
-                return false;
-            }
-        }
-
-        if (!response.IsSuccessStatusCode)
-        {
-            var content = await response.Content.ReadAsStringAsync(PipelineStopToken);
-            var ex = new HttpRequestException(
-                $"The RabbitMQ management API returned an unsuccessful status code. The response content follows: {content}",
-                null,
-                response.StatusCode
+            var er = new ErrorRecord(
+                ex,
+                "ManagementBadRequest",
+                ErrorCategory.NotSpecified,
+                Payload
             );
+            await WriteErrorAsync(er);
+            return;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            var er = new ErrorRecord(
+                ex,
+                "ManagementForbidden",
+                ErrorCategory.PermissionDenied,
+                ManagementUri
+            );
+            await WriteErrorAsync(er);
+            return;
+        }
+        catch (HttpRequestException ex)
+        {
             var er = new ErrorRecord(
                 ex,
                 "UnsuccessfulStatusCode",
                 ErrorCategory.NotSpecified,
-                response
+                Payload
             );
             await WriteErrorAsync(er);
-            return false;
+            return;
         }
 
-        return true;
+        if (Mandatory && !response.Routed)
+        {
+            var ex = new Exception(
+                "The published message was mandatory, but was not routed to any queue."
+            );
+            var er = new ErrorRecord(ex, "NotRouted", ErrorCategory.InvalidResult, Payload);
+            await WriteErrorAsync(er).ConfigureAwait(false);
+        }
     }
 
     private async Task PublishAmqp()
@@ -412,23 +318,7 @@ public sealed class SendRabbitMqMessageCommand : RmqCmdlet
             return;
         }
 
-        var basicProperties = new BasicProperties()
-        {
-            AppId = AppId,
-            ClusterId = ClusterId,
-            ContentType = ContentType ?? contentType,
-            ContentEncoding = ContentEncoding,
-            CorrelationId = CorrelationId,
-            DeliveryMode = DeliveryMode,
-            Expiration = Expiration?.Milliseconds.ToString(),
-            MessageId = MessageId,
-            Priority = Priority,
-            Type = Type,
-            UserId = UserId,
-            Timestamp = new AmqpTimestamp(new DateTimeOffset(Timestamp).ToUnixTimeSeconds()),
-            Headers = HeadersDictionary(),
-            ReplyToAddress = ReplyTo,
-        };
+        var basicProperties = BuildBasicProperties(contentType);
 
         if (
             !await InvokeAsync(() =>
@@ -459,6 +349,27 @@ public sealed class SendRabbitMqMessageCommand : RmqCmdlet
             var er = new ErrorRecord(ex, "PublishFailed", ErrorCategory.ConnectionError, Payload);
             await WriteErrorAsync(er);
         }
+    }
+
+    private BasicProperties BuildBasicProperties(string contentType)
+    {
+        return new BasicProperties()
+        {
+            AppId = AppId,
+            ClusterId = ClusterId,
+            ContentType = ContentType ?? contentType,
+            ContentEncoding = ContentEncoding,
+            CorrelationId = CorrelationId,
+            DeliveryMode = DeliveryMode,
+            Expiration = Expiration?.Milliseconds.ToString(),
+            MessageId = MessageId,
+            Priority = Priority,
+            Type = Type,
+            UserId = UserId,
+            Timestamp = new AmqpTimestamp(new DateTimeOffset(Timestamp).ToUnixTimeSeconds()),
+            Headers = HeadersDictionary(),
+            ReplyToAddress = ReplyTo,
+        };
     }
 
     private void SerializeBody(out string contentType, out byte[] body)
@@ -500,15 +411,4 @@ public sealed class SendRabbitMqMessageCommand : RmqCmdlet
             ),
         };
     }
-
-    /// <summary>
-    /// Null cmdlet parameters need to be not included. RabbitMQ does not support the
-    /// json literal `null`, rather it expects those members to be not present.
-    /// </summary>
-    private static readonly JsonSerializerOptions MANAGEMENT_JSON_OPTIONS = new(
-        JsonSerializerDefaults.Web
-    )
-    {
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    };
 }

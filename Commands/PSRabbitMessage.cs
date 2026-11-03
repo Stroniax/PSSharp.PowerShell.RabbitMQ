@@ -8,39 +8,77 @@ using RabbitMQ.Client.Events;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
-public sealed record PSRabbitMessage
+/// <summary>
+/// <para>
+/// PowerShell-oriented representation of a RabbitMQ message.
+/// </para>
+/// <para>
+/// The instance may implement <see cref="IInFlightMessage"/> if it was produced from a broker.
+/// </para>
+/// </summary>
+public record PSRabbitMessage
 {
-    internal PSRabbitMessage(
-        IChannel channel,
+    private PSRabbitMessage(
         PSObject? body,
         string exchange,
         string routingKey,
-        ulong deliveryTag,
         bool redelivered,
         IReadOnlyBasicProperties basicProperties,
         byte[] rawBody
     )
     {
-        Channel = channel;
         Body = body;
         Exchange = exchange;
         RoutingKey = routingKey;
-        DeliveryTag = deliveryTag;
         Redelivered = redelivered;
         BasicProperties = basicProperties;
         RawBody = rawBody;
     }
 
-    internal IChannel Channel { get; }
-
     public PSObject? Body { get; }
     public string Exchange { get; }
     public string RoutingKey { get; }
-    public ulong DeliveryTag { get; }
     public bool Redelivered { get; }
     public IReadOnlyBasicProperties BasicProperties { get; }
     public byte[] RawBody { get; }
     public uint? MessageCount { get; init; }
+
+    private sealed record InFlightPSRabbitMessage : PSRabbitMessage, IInFlightMessage
+    {
+        internal InFlightPSRabbitMessage(
+            IChannel channel,
+            PSObject? body,
+            string exchange,
+            string routingKey,
+            ulong deliveryTag,
+            bool redelivered,
+            IReadOnlyBasicProperties basicProperties,
+            byte[] rawBody
+        )
+            : base(body, exchange, routingKey, redelivered, basicProperties, rawBody)
+        {
+            Channel = channel;
+            DeliveryTag = deliveryTag;
+        }
+
+        internal IChannel Channel { get; }
+        public ulong DeliveryTag { get; }
+
+        public async Task AckAsync(CancellationToken cancellationToken)
+        {
+            await Channel.BasicAckAsync(DeliveryTag, false, cancellationToken);
+        }
+
+        public async Task NackAsync(bool requeue, CancellationToken cancellationToken)
+        {
+            await Channel.BasicNackAsync(DeliveryTag, false, requeue, cancellationToken);
+        }
+
+        public async Task RejectAsync(bool requeue, CancellationToken cancellationToken)
+        {
+            await Channel.BasicRejectAsync(DeliveryTag, requeue, cancellationToken);
+        }
+    }
 
     internal static bool FromGet(
         IChannel channel,
@@ -50,48 +88,15 @@ public sealed record PSRabbitMessage
         [MaybeNullWhen(true)] out ErrorRecord error
     )
     {
-        serialization ??= get.BasicProperties.ContentType switch
-        {
-            "application/octet-stream" => PSRabbitMessageSerialization.Binary,
-            "application/json" or "text/json" => PSRabbitMessageSerialization.Json,
-            "text/xml" or "application/xml" or "application/clixml+xml" =>
-                PSRabbitMessageSerialization.Clixml,
-            "text/plain" => PSRabbitMessageSerialization.Utf8,
-            // Try to deserialize as UTF8 if there is no other indication in the payload. The user can still use the RawBody if needed
-            null or "" => PSRabbitMessageSerialization.Utf8,
-            _ => PSRabbitMessageSerialization.Binary,
-        };
+        serialization ??= ResolveSerialization(get.BasicProperties.ContentType);
 
-        PSObject? body;
-        switch (serialization)
+        if (!ParseBody(serialization.Value, get.Body, out var body, out error))
         {
-            case PSRabbitMessageSerialization.Utf8:
-                var utf8 = Encoding.UTF8.GetString(get.Body.Span);
-                body = new PSObject(utf8);
-                break;
-            case PSRabbitMessageSerialization.Binary:
-                body = new PSObject(get.Body.ToArray());
-                break;
-            case PSRabbitMessageSerialization.Json:
-                var json = Encoding.UTF8.GetString(get.Body.Span);
-                var jsonBody = JsonObject.ConvertFromJson(json, out error);
-                body = new PSObject(jsonBody);
-                if (error is not null)
-                {
-                    message = null;
-                    return false;
-                }
-                break;
-            case PSRabbitMessageSerialization.Clixml:
-                var clixml = Encoding.UTF8.GetString(get.Body.Span);
-                var xmlBody = PSSerializer.Deserialize(clixml);
-                body = new PSObject(xmlBody);
-                break;
-            default:
-                throw new UnreachableException("No serialization is defined.");
+            message = null;
+            return false;
         }
 
-        message = new PSRabbitMessage(
+        message = new InFlightPSRabbitMessage(
             channel,
             body,
             get.Exchange,
@@ -104,7 +109,6 @@ public sealed record PSRabbitMessage
         {
             MessageCount = get.MessageCount,
         };
-        error = null;
         return true;
     }
 
@@ -116,7 +120,98 @@ public sealed record PSRabbitMessage
         [MaybeNullWhen(true)] out ErrorRecord error
     )
     {
-        serialization ??= deliver.BasicProperties.ContentType switch
+        serialization ??= ResolveSerialization(deliver.BasicProperties.ContentType);
+
+        if (!ParseBody(serialization.Value, deliver.Body, out var body, out error))
+        {
+            message = null;
+            return false;
+        }
+
+        message = new InFlightPSRabbitMessage(
+            channel,
+            body,
+            deliver.Exchange,
+            deliver.RoutingKey,
+            deliver.DeliveryTag,
+            deliver.Redelivered,
+            deliver.BasicProperties,
+            deliver.Body.ToArray()
+        );
+        return true;
+    }
+
+    internal static bool FromManagement(
+        ManagementGetResponse get,
+        PSRabbitMessageSerialization? serialization,
+        [MaybeNullWhen(false)] out PSRabbitMessage message,
+        [MaybeNullWhen(true)] out ErrorRecord error
+    )
+    {
+        serialization ??= ResolveSerialization(get.Properties.ContentType);
+
+        var rawPayload = Convert.FromBase64String(get.Payload);
+        if (!ParseBody(serialization.Value, rawPayload, out var body, out error))
+        {
+            message = null;
+            return false;
+        }
+
+        message = new PSRabbitMessage(
+            body,
+            get.Exchange,
+            get.RoutingKey,
+            get.Redelivered,
+            get.Properties,
+            rawPayload
+        )
+        {
+            MessageCount = get.MessageCount,
+        };
+        return true;
+    }
+
+    private static bool ParseBody(
+        PSRabbitMessageSerialization serialization,
+        ReadOnlyMemory<byte> body,
+        out PSObject? parsedBody,
+        [MaybeNullWhen(true)] out ErrorRecord error
+    )
+    {
+        switch (serialization)
+        {
+            case PSRabbitMessageSerialization.Utf8:
+                var utf8 = Encoding.UTF8.GetString(body.Span);
+                parsedBody = new PSObject(utf8);
+                break;
+            case PSRabbitMessageSerialization.Binary:
+                parsedBody = new PSObject(body.ToArray());
+                break;
+            case PSRabbitMessageSerialization.Json:
+                var json = Encoding.UTF8.GetString(body.Span);
+                var jsonBody = JsonObject.ConvertFromJson(json, out error);
+                parsedBody = PSObject.AsPSObject(jsonBody);
+                if (error is not null)
+                {
+                    return false;
+                }
+                break;
+            case PSRabbitMessageSerialization.Clixml:
+                var clixml = Encoding.UTF8.GetString(body.Span);
+                var xmlBody = PSSerializer.Deserialize(clixml);
+                parsedBody = new PSObject(xmlBody);
+                break;
+            default:
+                throw new UnreachableException("No serialization is defined.");
+        }
+
+        error = default;
+        return true;
+    }
+
+    private static PSRabbitMessageSerialization ResolveSerialization(string? contentType)
+    {
+        return contentType switch
         {
             "application/octet-stream" => PSRabbitMessageSerialization.Binary,
             "application/json" or "text/json" => PSRabbitMessageSerialization.Json,
@@ -127,57 +222,5 @@ public sealed record PSRabbitMessage
             null or "" => PSRabbitMessageSerialization.Utf8,
             _ => PSRabbitMessageSerialization.Binary,
         };
-
-        PSObject? body;
-        switch (serialization)
-        {
-            case PSRabbitMessageSerialization.Utf8:
-                var utf8 = Encoding.UTF8.GetString(deliver.Body.Span);
-                body = new PSObject(utf8);
-                break;
-            case PSRabbitMessageSerialization.Binary:
-                body = new PSObject(deliver.Body.ToArray());
-                break;
-            case PSRabbitMessageSerialization.Json:
-                var json = Encoding.UTF8.GetString(deliver.Body.Span);
-                var jsonBody = JsonObject.ConvertFromJson(json, out error);
-                body = new PSObject(jsonBody);
-                if (error is not null)
-                {
-                    message = null;
-                    return false;
-                }
-                break;
-            case PSRabbitMessageSerialization.Clixml:
-                var clixml = Encoding.UTF8.GetString(deliver.Body.ToArray());
-                var xmlBody = PSSerializer.Deserialize(clixml);
-                body = new PSObject(xmlBody);
-                break;
-            default:
-                throw new UnreachableException("No serialization is defined.");
-        }
-
-        message = new PSRabbitMessage(
-            channel,
-            body,
-            deliver.Exchange,
-            deliver.RoutingKey,
-            deliver.DeliveryTag,
-            deliver.Redelivered,
-            deliver.BasicProperties,
-            deliver.Body.ToArray()
-        );
-        error = null;
-        return true;
-    }
-
-    public async Task AckAsync(CancellationToken cancellationToken = default)
-    {
-        await Channel.BasicAckAsync(DeliveryTag, false, cancellationToken);
-    }
-
-    public async Task NackAsync(bool requeue = false, CancellationToken cancellationToken = default)
-    {
-        await Channel.BasicNackAsync(DeliveryTag, false, requeue, cancellationToken);
     }
 }

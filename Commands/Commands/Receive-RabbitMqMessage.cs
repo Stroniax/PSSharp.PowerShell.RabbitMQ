@@ -13,6 +13,7 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
     private const string PeekParameterSet = "Peek";
     private const string GetParameterSet = "Get";
     private const string ConsumeParameterSet = "Consume";
+    private const string ManagementParameterSet = "Management";
 
     [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
     [QueueNameCompleter]
@@ -20,10 +21,20 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
     public string Queue { get; set; } = string.Empty;
 
     /// <summary>
+    /// <para>
     /// Raise an error if there is no message in the queue.
+    /// </para>
+    /// <para>
+    /// When using the management API (via <c>-ManagementUri</c> and affiliated parameters) the
+    /// <c>-UnregisterAfterCount</c> parameter is acceptable alongside this parameter. When both parameters are
+    /// provided, the behavior of <c>-Mandatory:$true</c> is to only write an error if there were <em>no</em>
+    /// messages in the queue. If any messages were retrieved, even if it was not the requested amount, the
+    /// cmdlet will not indicate error.
+    /// </para>
     /// </summary>
     [Parameter(ParameterSetName = PeekParameterSet)]
     [Parameter(ParameterSetName = GetParameterSet)]
+    [Parameter(ParameterSetName = ManagementParameterSet)]
     public SwitchParameter Mandatory { get; set; }
 
     /// <remarks>
@@ -76,8 +87,14 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
     /// <summary>
     /// Unregister the consumer after this number of messages have been processed. The consumer may continue
     /// running after this number of messages have been processed if there were messages in-flight.
+    /// <para>
+    /// If the caller is using the management API (via the <c>-ManagementUri</c> and associated parameters),
+    /// this is recognized as the number of messages to fetch from the management API. See note on
+    /// <c>-Mandatory</c> for related behavior.
+    /// </para>
     /// </summary>
     [Parameter(ParameterSetName = ConsumeParameterSet)]
+    [Parameter(ParameterSetName = ManagementParameterSet)]
     [ValidateRange(1ul, ulong.MaxValue)]
     [ArgumentCompletions("1", "10", "100", "1000")]
     [Alias("MaxCount")]
@@ -105,10 +122,49 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
     [ArgumentCompletions("1", "10", "100", "1000")]
     public ushort PrefetchCount { get; set; } = 1;
 
-    [Parameter(Mandatory = true)]
+    [Parameter(Mandatory = true, ParameterSetName = ConsumeParameterSet)]
+    [Parameter(Mandatory = true, ParameterSetName = GetParameterSet)]
+    [Parameter(Mandatory = true, ParameterSetName = PeekParameterSet)]
     [RabbitConnectionCompleter]
     [RabbitConnection]
-    public PSRabbitConnection Connection { get; set; } = null!;
+    public PSRabbitConnection? Connection { get; set; }
+
+    [Parameter(Mandatory = true, ParameterSetName = ManagementParameterSet)]
+    [ManagementServerUriCompleter]
+    public Uri? ManagementUri { get; set; }
+
+    [Parameter(ParameterSetName = ManagementParameterSet)]
+    [Credential]
+    [ArgumentCompletions("guest")]
+    public PSCredential? Credential { get; set; }
+
+    [Parameter(ParameterSetName = ManagementParameterSet)]
+    [ValidateNotNullOrEmpty]
+    [ArgumentCompletions("/")]
+    public string VHost { get; set; } = "/";
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <remarks>
+    /// It defaults to ack without requeue because that is the behavior a user would expect if they were
+    /// receiving a message from the broker. This exhibits consistent behavior until specific parameters
+    /// are set to indicate otherwise - whether <c>-Peek</c>, <c>-ManualAck</c>, or <c>-AckMode
+    /// ack_requeue_true</c>.
+    /// </remarks>
+    [Parameter(ParameterSetName = ManagementParameterSet)]
+    [ValidateNotNullOrEmpty]
+    [ValidateSet(
+        "ack_requeue_true",
+        "reject_requeue_true",
+        "ack_requeue_false",
+        "reject_requeue_false"
+    )]
+    public string AckMode
+    {
+        get;
+        set => field = value.ToLower();
+    } = "ack_requeue_false";
 
     protected override async Task ProcessRecordAsync()
     {
@@ -121,6 +177,9 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
             case ConsumeParameterSet:
                 await Job();
                 break;
+            case ManagementParameterSet:
+                await Management();
+                break;
             default:
                 throw new UnreachableException("Is the parameter set implemented?");
         }
@@ -128,6 +187,11 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
 
     private async Task Get()
     {
+        Debug.Assert(
+            Connection is not null,
+            "Mandatory parameter 'Connection' for 'Get' or 'Peek' parameter set cannot be null."
+        );
+
         var channel = await Connection.GetDefaultChannel(PipelineStopToken).ConfigureAwait(false);
 
         var autoAck = !ManualAck.IsPresent && !Peek.IsPresent;
@@ -142,8 +206,7 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
 
         if (message is null && Mandatory.IsPresent)
         {
-            var ex = new ItemNotFoundException("There are no messages in the queue.");
-            var er = new ErrorRecord(ex, "QueueEmpty", ErrorCategory.InvalidData, Queue);
+            var er = ErrorMandatoryMessage();
             await WriteErrorAsync(er);
         }
 
@@ -170,8 +233,19 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
         }
     }
 
+    private ErrorRecord ErrorMandatoryMessage()
+    {
+        var ex = new ItemNotFoundException("There are no messages in the queue.");
+        var er = new ErrorRecord(ex, "QueueEmpty", ErrorCategory.InvalidData, Queue);
+        return er;
+    }
+
     private async Task Job()
     {
+        Debug.Assert(
+            Connection is not null,
+            "Mandatory parameter 'Connection' for 'Consume' parameter set cannot be null."
+        );
         // The job owns the channel, so create a new one for it.
         // This also prevents any error in the job from breaking other users of the DefaultChannel.
         var channel = await Connection
@@ -189,5 +263,61 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
         JobRepository.Add(job);
         await WriteObjectAsync(job).ConfigureAwait(false);
         _ = job.StartJobAsync();
+    }
+
+    private async Task Management()
+    {
+        Debug.Assert(
+            ManagementUri is not null,
+            "Mandatory parameter 'ManagementUri' for 'Management' parameter set cannot be null."
+        );
+
+        var cred = Credential?.GetNetworkCredential() ?? ManagementUri.GetNetworkCredential();
+        var uri = ManagementUri.WithoutCredential();
+
+        if (cred is null)
+        {
+            await this.ManagementCredentialRequiredError(ManagementUri);
+            return;
+        }
+
+        using var client = new ManagementClient(uri, cred);
+        var maxCount = MyInvocation.BoundParameters.ContainsKey(nameof(UnregisterAfterCount))
+            ? UnregisterAfterCount
+            : 1;
+        var messages = await client.GetAsync(
+            VHost,
+            Queue,
+            maxCount,
+            AckMode,
+            "base64",
+            PipelineStopToken
+        );
+
+        foreach (var message in messages)
+        {
+            if (
+                !PSRabbitMessage.FromManagement(
+                    message,
+                    Serialization,
+                    out var psmessage,
+                    out var pserror
+                )
+            )
+            {
+                await WriteErrorAsync(pserror);
+            }
+            else
+            {
+                await WriteObjectAsync(psmessage);
+            }
+        }
+
+        // Batch pipeline callback to write errors into a single callback
+        if (Mandatory.IsPresent && messages.Length == 0)
+        {
+            var er = ErrorMandatoryMessage();
+            await WriteErrorAsync(er);
+        }
     }
 }

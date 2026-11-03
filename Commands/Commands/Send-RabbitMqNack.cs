@@ -24,18 +24,38 @@ public sealed class SendRabbitMqNackCommand : RmqCmdlet
     [Parameter]
     public SwitchParameter PassThru { get; set; }
 
+    [Parameter]
+    public SwitchParameter UseBasicReject { get; set; }
+
     protected override async Task ProcessRecordAsync()
     {
         Debug.Assert(Message is not null, "A value must be assigned to the mandatory parameter.");
 
-        if (!await ShouldProcessNack(Message.DeliveryTag).ConfigureAwait(false))
+        if (Message is not IInFlightMessage inFlight)
+        {
+            var ex = new InvalidOperationException(
+                "The message is not owned by the broker. It cannot be negatively acknowledged. This may occur if the message was received from the RabbitMQ management API."
+            );
+            var er = new ErrorRecord(ex, "NotInFlight", ErrorCategory.InvalidArgument, Message);
+            await WriteErrorAsync(er);
+            return;
+        }
+
+        if (!await ShouldProcessNack(inFlight.DeliveryTag).ConfigureAwait(false))
         {
             return;
         }
 
         try
         {
-            await Message.NackAsync(Requeue, PipelineStopToken).ConfigureAwait(false);
+            if (UseBasicReject)
+            {
+                await inFlight.RejectAsync(Requeue, PipelineStopToken).ConfigureAwait(false);
+            }
+            else
+            {
+                await inFlight.NackAsync(Requeue, PipelineStopToken).ConfigureAwait(false);
+            }
         }
         catch (Exception ex)
         {

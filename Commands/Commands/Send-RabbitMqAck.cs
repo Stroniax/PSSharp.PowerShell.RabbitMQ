@@ -25,14 +25,24 @@ public sealed class SendRabbitMqAckCommand : RmqCmdlet
     {
         Debug.Assert(Message is not null, "A value must be assigned to the mandatory parameter.");
 
-        if (!await ShouldProcessAck(Message.DeliveryTag).ConfigureAwait(false))
+        if (Message is not IInFlightMessage inFlight)
+        {
+            var ex = new InvalidOperationException(
+                "The message is not owned by the broker. It cannot be acknowledged. This may occur if the message was received from the RabbitMQ management API."
+            );
+            var er = new ErrorRecord(ex, "NotInFlight", ErrorCategory.InvalidArgument, Message);
+            await WriteErrorAsync(er);
+            return;
+        }
+
+        if (!await ShouldProcessAck(inFlight.DeliveryTag).ConfigureAwait(false))
         {
             return;
         }
 
         try
         {
-            await Message.AckAsync(PipelineStopToken).ConfigureAwait(false);
+            await inFlight.AckAsync(PipelineStopToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

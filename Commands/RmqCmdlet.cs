@@ -8,12 +8,12 @@ public abstract class RmqCmdlet : PSCmdlet
 {
     private BlockingCollection<Action> _queue = [];
 
-    protected async Task WriteObjectAsync(object? value)
+    public async Task WriteObjectAsync(object? value)
     {
         await InvokeAsync(() => WriteObject(value)).ConfigureAwait(false);
     }
 
-    protected async Task WriteErrorAsync(ErrorRecord error)
+    public async Task WriteErrorAsync(ErrorRecord error)
     {
         await InvokeAsync(() => WriteError(error)).ConfigureAwait(false);
     }
