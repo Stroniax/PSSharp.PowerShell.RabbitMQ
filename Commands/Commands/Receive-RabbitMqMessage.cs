@@ -3,6 +3,7 @@
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 [Cmdlet(VerbsCommunications.Receive, Noun, DefaultParameterSetName = AckParameterSet)]
+[Alias("rcrmq")]
 public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
 {
     private const string Noun = "RabbitMqMessage";

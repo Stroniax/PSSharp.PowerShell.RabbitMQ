@@ -8,6 +8,7 @@ using RabbitMQ.Client;
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 [Cmdlet(VerbsCommunications.Send, Noun, SupportsShouldProcess = true)]
+[Alias("sdrmq")]
 public sealed class SendRabbitMqMessageCommand : RmqCmdlet
 {
     private const string Noun = "RabbitMqMessage";
