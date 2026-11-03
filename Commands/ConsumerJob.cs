@@ -73,14 +73,11 @@ public sealed class ConsumerJob : Job
         {
             _windowWatcher?.Reset();
 
-            if (PSRabbitMessage.FromDeliver(_channel, e, null, out var message, out var error))
-            {
-                Output.Add(new PSObject(message));
-            }
-            else
+            if (!PSRabbitMessage.FromDeliver(_channel, e, null, out var message, out var error))
             {
                 Error.Add(error);
             }
+            Output.Add(new PSObject(message));
 
             if (Interlocked.Increment(ref _receivedCount) == UnregisterAfterCount)
             {

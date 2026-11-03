@@ -217,7 +217,7 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
         }
 
         if (
-            PSRabbitMessage.FromGet(
+            !PSRabbitMessage.FromGet(
                 channel,
                 message,
                 Serialization,
@@ -226,12 +226,9 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
             )
         )
         {
-            await WriteObjectAsync(psmessage);
-        }
-        else
-        {
             await WriteErrorAsync(error);
         }
+        await WriteObjectAsync(psmessage);
     }
 
     private ErrorRecord ErrorMandatoryMessage()
@@ -308,10 +305,7 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
             {
                 await WriteErrorAsync(pserror);
             }
-            else
-            {
-                await WriteObjectAsync(psmessage);
-            }
+            await WriteObjectAsync(psmessage);
         }
 
         // Batch pipeline callback to write errors into a single callback

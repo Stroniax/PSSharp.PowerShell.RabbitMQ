@@ -35,6 +35,11 @@ public record PSRabbitMessage
         RawBody = rawBody;
     }
 
+    /// <summary>
+    /// Might be <see langword="null"/> according to the deserialized message body, or if there was an error
+    /// parsing the message payload. Use <see cref="RawBody"/> if necessary or observe errors of the cmdlet
+    /// or job that produced this record.
+    /// </summary>
     public PSObject? Body { get; }
     public string Exchange { get; }
     public string RoutingKey { get; }
@@ -84,17 +89,13 @@ public record PSRabbitMessage
         IChannel channel,
         BasicGetResult get,
         PSRabbitMessageSerialization? serialization,
-        [MaybeNullWhen(false)] out PSRabbitMessage message,
+        out PSRabbitMessage message,
         [MaybeNullWhen(true)] out ErrorRecord error
     )
     {
         serialization ??= ResolveSerialization(get.BasicProperties.ContentType);
 
-        if (!ParseBody(serialization.Value, get.Body, out var body, out error))
-        {
-            message = null;
-            return false;
-        }
+        ParseBody(serialization.Value, get.Body, out var body, out error);
 
         message = new InFlightPSRabbitMessage(
             channel,
@@ -109,24 +110,20 @@ public record PSRabbitMessage
         {
             MessageCount = get.MessageCount,
         };
-        return true;
+        return error is null;
     }
 
     internal static bool FromDeliver(
         IChannel channel,
         BasicDeliverEventArgs deliver,
         PSRabbitMessageSerialization? serialization,
-        [MaybeNullWhen(false)] out PSRabbitMessage message,
+        out PSRabbitMessage message,
         [MaybeNullWhen(true)] out ErrorRecord error
     )
     {
         serialization ??= ResolveSerialization(deliver.BasicProperties.ContentType);
 
-        if (!ParseBody(serialization.Value, deliver.Body, out var body, out error))
-        {
-            message = null;
-            return false;
-        }
+        ParseBody(serialization.Value, deliver.Body, out var body, out error);
 
         message = new InFlightPSRabbitMessage(
             channel,
@@ -138,24 +135,20 @@ public record PSRabbitMessage
             deliver.BasicProperties,
             deliver.Body.ToArray()
         );
-        return true;
+        return error is null;
     }
 
     internal static bool FromManagement(
         ManagementGetResponse get,
         PSRabbitMessageSerialization? serialization,
-        [MaybeNullWhen(false)] out PSRabbitMessage message,
+        out PSRabbitMessage message,
         [MaybeNullWhen(true)] out ErrorRecord error
     )
     {
         serialization ??= ResolveSerialization(get.Properties.ContentType);
 
         var rawPayload = Convert.FromBase64String(get.Payload);
-        if (!ParseBody(serialization.Value, rawPayload, out var body, out error))
-        {
-            message = null;
-            return false;
-        }
+        ParseBody(serialization.Value, rawPayload, out var body, out error);
 
         message = new PSRabbitMessage(
             body,
@@ -168,9 +161,17 @@ public record PSRabbitMessage
         {
             MessageCount = get.MessageCount,
         };
-        return true;
+        return error is null;
     }
 
+    private static readonly UTF8Encoding StrictUtf8 = new(false, true);
+
+    /// <remarks>
+    /// The error occurs during deserialization, which is why callers still construct a
+    /// <see cref="PSRabbitMessage"/> (with a <see langword="null"/> body) if the parse fails. This
+    /// allows callers to ack/nack the message which they must do for manual ack mode anyway, so it
+    /// would be improper to propagate the error and discard the message.
+    /// </remarks>
     private static bool ParseBody(
         PSRabbitMessageSerialization serialization,
         ReadOnlyMemory<byte> body,
@@ -178,11 +179,25 @@ public record PSRabbitMessage
         [MaybeNullWhen(true)] out ErrorRecord error
     )
     {
+        error = default;
         switch (serialization)
         {
             case PSRabbitMessageSerialization.Utf8:
-                var utf8 = Encoding.UTF8.GetString(body.Span);
-                parsedBody = new PSObject(utf8);
+                try
+                {
+                    var utf8 = StrictUtf8.GetString(body.Span);
+                    parsedBody = new PSObject(utf8);
+                }
+                catch (ArgumentException ex)
+                {
+                    error = new ErrorRecord(
+                        ex,
+                        "NotUtf8",
+                        ErrorCategory.InvalidData,
+                        body.ToArray()
+                    );
+                    parsedBody = null;
+                }
                 break;
             case PSRabbitMessageSerialization.Binary:
                 parsedBody = new PSObject(body.ToArray());
@@ -190,23 +205,18 @@ public record PSRabbitMessage
             case PSRabbitMessageSerialization.Json:
                 var json = Encoding.UTF8.GetString(body.Span);
                 var jsonBody = JsonObject.ConvertFromJson(json, out error);
-                parsedBody = PSObject.AsPSObject(jsonBody);
-                if (error is not null)
-                {
-                    return false;
-                }
+                parsedBody = jsonBody is null ? null : PSObject.AsPSObject(jsonBody);
                 break;
             case PSRabbitMessageSerialization.Clixml:
                 var clixml = Encoding.UTF8.GetString(body.Span);
                 var xmlBody = PSSerializer.Deserialize(clixml);
-                parsedBody = new PSObject(xmlBody);
+                parsedBody = xmlBody is null ? null : PSObject.AsPSObject(xmlBody);
                 break;
             default:
-                throw new UnreachableException("No serialization is defined.");
+                throw new UnreachableException("No or invalid serialization is specified.");
         }
 
-        error = default;
-        return true;
+        return error is null;
     }
 
     private static PSRabbitMessageSerialization ResolveSerialization(string? contentType)
