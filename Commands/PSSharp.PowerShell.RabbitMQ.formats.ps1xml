@@ -29,5 +29,74 @@
                 </TableRowEntries>
             </TableControl>
         </View>
+        <View>
+            <Name>Default</Name>
+            <ViewSelectedBy>
+                <TypeName>PSSharp.PowerShell.RabbitMQ.Commands.PSRabbitMessage</TypeName>
+            </ViewSelectedBy>
+            <ListControl>
+                <ListEntries>
+                    <ListEntry>
+                        <ListItems>
+                            <ListItem>
+                                <PropertyName>Body</PropertyName>
+                            </ListItem>
+                            <ListItem>
+                                <ItemSelectionCondition>
+                                    <ScriptBlock>$null -eq $_.Body</ScriptBlock>
+                                </ItemSelectionCondition>
+                                <PropertyName>RawBody</PropertyName>
+                            </ListItem>
+                            <ListItem>
+                                <Label>Exchange</Label>
+                                <ScriptBlock><![CDATA[
+                                    if ($_.Exchange -eq '') {
+                                        $PSStyle.Dim + 'amq.default' + $PSStyle.Reset
+                                    } else {
+                                        $_.Exchange
+                                    }
+                                ]]></ScriptBlock>
+                            </ListItem>
+                            <ListItem>
+                                <PropertyName>RoutingKey</PropertyName>
+                            </ListItem>
+                            <ListItem>
+                                <ItemSelectionCondition>
+                                    <PropertyName>Redelivered</PropertyName>
+                                </ItemSelectionCondition>
+                                <PropertyName>Redelivered</PropertyName>
+                            </ListItem>
+                            <ListItem>
+                                <ItemSelectionCondition>
+                                    <ScriptBlock>$null -ne $_.MessageCount</ScriptBlock>
+                                </ItemSelectionCondition>
+                                <PropertyName>MessageCount</PropertyName>
+                            </ListItem>
+                            <ListItem>
+                                <Label>BasicProperties.ContentType</Label>
+                                <ItemSelectionCondition>
+                                    <ScriptBlock>$_.BasicProperties.ContentType</ScriptBlock>
+                                </ItemSelectionCondition>
+                                <ScriptBlock>$_.BasicProperties.ContentType</ScriptBlock>
+                            </ListItem>
+                            <ListItem>
+                                <Label>BasicProperties.Headers</Label>
+                                <ItemSelectionCondition>
+                                    <ScriptBlock>$_.BasicProperties.Headers.Count -gt 0</ScriptBlock>
+                                </ItemSelectionCondition>
+                                <ScriptBlock>$_.BasicProperties.Headers</ScriptBlock>
+                            </ListItem>
+                            <ListItem>
+                                <Label>BasicProperties.DeliveryMode</Label>
+                                <ItemSelectionCondition>
+                                    <ScriptBlock>$_.BasicProperties.DeliveryMode</ScriptBlock>
+                                </ItemSelectionCondition>
+                                <ScriptBlock>$_.BasicProperties.DeliveryMode</ScriptBlock>
+                            </ListItem>
+                        </ListItems>
+                    </ListEntry>
+                </ListEntries>
+            </ListControl>
+        </View>
     </ViewDefinitions>
 </Configuration>
