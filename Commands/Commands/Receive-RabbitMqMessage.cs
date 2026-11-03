@@ -2,13 +2,15 @@
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
-[Cmdlet(VerbsCommon.Get, Noun)]
-public sealed class GetRabbitMqMessageCommand : RmqCmdlet
+[Cmdlet(VerbsCommunications.Receive, Noun, DefaultParameterSetName = AckParameterSet)]
+public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
 {
     private const string Noun = "RabbitMqMessage";
+    private const string PeekParameterSet = "Peek";
+    private const string AckParameterSet = "Ack";
 
     [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-    [QueueNameArgumentCompleter]
+    [QueueNameCompleter]
     [Alias("QueueName")]
     public string Queue { get; set; } = string.Empty;
 
@@ -24,9 +26,9 @@ public sealed class GetRabbitMqMessageCommand : RmqCmdlet
     /// "manual ack" in addition to the user manually acking the message. This makes the workflow
     /// easier to reason about for the average user:
     /// <code>
-    /// Get-RabbitMqMessage | Invoke-Handler # Ack'd, next Get-* will not return the same message
+    /// Receive-RabbitMqMessage | Invoke-Handler # Ack'd, next Receive-* will not return the same message
     ///
-    /// $Message = Get-RabbitMqMessage -ManualAck
+    /// $Message = Receive-RabbitMqMessage -ManualAck
     /// try {
     ///     Invoke-ComplexHandler1 $Message -ErrorAction 'Stop'
     ///     Invoke-ComplexHandler2 $Message -ErrorAction 'Continue'
@@ -37,8 +39,17 @@ public sealed class GetRabbitMqMessageCommand : RmqCmdlet
     /// }
     /// </code>
     /// </remarks>
-    [Parameter]
+    [Parameter(ParameterSetName = AckParameterSet)]
     public SwitchParameter ManualAck { get; set; }
+
+    /// <summary>
+    /// Return the message to the queue. This is similar to using the RabbitMQ management API to "peek" or
+    /// see a message "without" consuming it from the queue. In reality, this is not a safe/idempotent
+    /// operation. Peeking at a message will cause its "Redelivered" status to be set next time it is
+    /// delivered. The "Peek" implementation  will be immediately nack the message with requeue=true.
+    /// </summary>
+    [Parameter(ParameterSetName = PeekParameterSet)]
+    public SwitchParameter Peek { get; set; }
 
     /// <summary>
     /// How to deserialize the message if it should be deserialized regardless of the content type.
@@ -55,8 +66,15 @@ public sealed class GetRabbitMqMessageCommand : RmqCmdlet
     {
         var channel = await Connection.GetDefaultChannel(PipelineStopToken).ConfigureAwait(false);
 
-        var autoAck = !ManualAck.IsPresent;
+        var autoAck = !ManualAck.IsPresent && !Peek.IsPresent;
         var message = await channel.BasicGetAsync(Queue, autoAck, PipelineStopToken);
+
+        // Return the message to the queue immediately, before any further handling.
+        if (message is not null && Peek.IsPresent)
+        {
+            // Do not permit cancellation of requeue for "Peek"
+            await channel.BasicNackAsync(message.DeliveryTag, false, true, CancellationToken.None);
+        }
 
         if (message is null && Mandatory.IsPresent)
         {

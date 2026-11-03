@@ -7,13 +7,13 @@ using RabbitMQ.Client;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
-[Cmdlet(VerbsData.Publish, Noun, SupportsShouldProcess = true)]
-public sealed class PublishRabbitMqMessageCommand : RmqCmdlet
+[Cmdlet(VerbsCommunications.Send, Noun, SupportsShouldProcess = true)]
+public sealed class SendRabbitMqMessageCommand : RmqCmdlet
 {
     private const string Noun = "RabbitMqMessage";
 
     [Parameter(ValueFromPipelineByPropertyName = true)]
-    [QueueNameArgumentCompleter]
+    [QueueNameCompleter]
     public string RoutingKey { get; set; } = string.Empty;
 
     [Parameter(ValueFromPipelineByPropertyName = true)]

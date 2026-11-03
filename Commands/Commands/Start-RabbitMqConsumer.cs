@@ -8,7 +8,7 @@ public sealed class StartRabbitMqConsumerCommand : RmqCmdlet
     public const string Noun = "RabbitMqConsumer";
 
     [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-    [QueueNameArgumentCompleter]
+    [QueueNameCompleter]
     [Alias("QueueName")]
     public string Queue { get; set; } = string.Empty;
 
@@ -32,7 +32,7 @@ public sealed class StartRabbitMqConsumerCommand : RmqCmdlet
     public TimeSpan UnregisterAfterWindow { get; set; } = TimeSpan.MaxValue;
 
     /// <remarks>
-    /// See <see cref="GetRabbitMqMessageCommand.ManualAck"/> for reasoning on inversion
+    /// See <see cref="ReceiveRabbitMqMessageCommand.ManualAck"/> for reasoning on inversion
     /// of RabbitMQ's counterpart argument.
     /// </remarks>
     [Parameter]

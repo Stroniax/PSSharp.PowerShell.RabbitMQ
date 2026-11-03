@@ -4,7 +4,7 @@ using System.Management.Automation.Language;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
-public sealed class QueueNameArgumentCompleterAttribute
+public sealed class QueueNameCompleterAttribute
     : ArgumentCompleterFactoryAttribute,
         IArgumentCompleter
 {
