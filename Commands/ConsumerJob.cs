@@ -4,6 +4,12 @@ using RabbitMQ.Client.Events;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
+/// <remarks>
+/// Because the job owns the <see cref="IChannel"/>, removing the job (<c>Remove-Job</c>) which calls
+/// <see cref="Job.Dispose"/> will release the channel and prevent any pending messages from being
+/// acked or nacked. For this reason, stop the job at will but do not remove the job until the messages
+/// are fully processed.
+/// </remarks>
 public sealed class ConsumerJob : Job
 {
     private readonly CancellationTokenSource _cts = new();
@@ -13,7 +19,8 @@ public sealed class ConsumerJob : Job
     private WindowWatcher? _windowWatcher;
 
     public ulong UnregisterAfterCount { get; init; } = ulong.MaxValue;
-    public TimeSpan UnregisterAfterWindow { get; init; } = TimeSpan.MaxValue;
+    public TimeSpan UnregisterAfterWindow { get; init; } =
+        TimeSpan.FromMilliseconds(uint.MaxValue - 1);
     public bool AutoAck { get; init; }
 
     /// <summary>
@@ -48,6 +55,7 @@ public sealed class ConsumerJob : Job
 
     public async Task StartJobAsync()
     {
+        _windowWatcher = new WindowWatcher(UnregisterAfterWindow);
         var consumer = new AsyncEventingBasicConsumer(_channel);
 
         consumer.RegisteredAsync += (sender, e) =>
@@ -155,14 +163,16 @@ public sealed class ConsumerJob : Job
 
         _ = Task.Run(async () =>
         {
-            _windowWatcher = new WindowWatcher(UnregisterAfterWindow);
             await _windowWatcher.WaitAsync(_cts.Token);
-            Debug.Add(
-                new DebugRecord(
-                    "The 'UnregisterAfterWindow' interval has elapsed. Canceling the consumer."
-                )
-            );
-            await _channel.BasicCancelAsync(_consumerTag, false, _cts.Token);
+            if (JobStateInfo.State == JobState.Running)
+            {
+                Debug.Add(
+                    new DebugRecord(
+                        "The 'UnregisterAfterWindow' interval has elapsed. Canceling the consumer."
+                    )
+                );
+                await _channel.BasicCancelAsync(_consumerTag, false, _cts.Token);
+            }
         });
     }
 

@@ -25,6 +25,11 @@ internal sealed class WindowWatcher : IDisposable
     /// <param name="time">Used to measure time.</param>
     public WindowWatcher(TimeSpan window, TimeProvider time)
     {
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(
+            window.TotalMilliseconds,
+            uint.MaxValue
+        );
+
         _tcs = new();
         _window = window;
 

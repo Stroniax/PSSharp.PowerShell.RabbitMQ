@@ -106,8 +106,9 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
     /// </summary>
     [Parameter(ParameterSetName = ConsumeParameterSet)]
     [ArgumentCompletions("00:00:05", "00:00:30", "00:01:00")]
-    [ValidateRange("00:00:01", "10675199.02:48:05.4775807")]
-    public TimeSpan UnregisterAfterWindow { get; set; } = TimeSpan.MaxValue;
+    [ValidateRange("00:00:01", "49.17:02:47.294")]
+    public TimeSpan UnregisterAfterWindow { get; set; } =
+        TimeSpan.FromMilliseconds(uint.MaxValue - 1);
 
     /// <summary>
     /// Sets the prefetch count on the channel that the consumer is registered with. Useful
