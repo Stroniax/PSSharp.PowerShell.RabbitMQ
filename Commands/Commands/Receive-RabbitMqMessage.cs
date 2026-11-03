@@ -1,14 +1,18 @@
-﻿using System.Management.Automation;
+﻿using System.Diagnostics;
+using System.Management.Automation;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
-[Cmdlet(VerbsCommunications.Receive, Noun, DefaultParameterSetName = AckParameterSet)]
+[Cmdlet(VerbsCommunications.Receive, Noun, DefaultParameterSetName = GetParameterSet)]
+[OutputType(typeof(PSRabbitMessage), ParameterSetName = [GetParameterSet, PeekParameterSet])]
+[OutputType(typeof(ConsumerJob), ParameterSetName = [ConsumeParameterSet])]
 [Alias("rcrmq")]
 public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
 {
     private const string Noun = "RabbitMqMessage";
     private const string PeekParameterSet = "Peek";
-    private const string AckParameterSet = "Ack";
+    private const string GetParameterSet = "Get";
+    private const string ConsumeParameterSet = "Consume";
 
     [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
     [QueueNameCompleter]
@@ -18,7 +22,8 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
     /// <summary>
     /// Raise an error if there is no message in the queue.
     /// </summary>
-    [Parameter]
+    [Parameter(ParameterSetName = PeekParameterSet)]
+    [Parameter(ParameterSetName = GetParameterSet)]
     public SwitchParameter Mandatory { get; set; }
 
     /// <remarks>
@@ -40,7 +45,8 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
     /// }
     /// </code>
     /// </remarks>
-    [Parameter(ParameterSetName = AckParameterSet)]
+    [Parameter(ParameterSetName = GetParameterSet)]
+    [Parameter(ParameterSetName = ConsumeParameterSet)]
     public SwitchParameter ManualAck { get; set; }
 
     /// <summary>
@@ -58,12 +64,69 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
     [Parameter]
     public PSRabbitMessageSerialization? Serialization { get; set; }
 
+    /// <summary>
+    /// Instead of receiving a single message, this parameter (and associated parameter set)
+    /// creates a consumer job that continually receives messages as they are delivered according
+    /// to the broker's implementation.
+    /// </summary>
+    [Parameter(Mandatory = true, ParameterSetName = ConsumeParameterSet)]
+    [ValidateSet("true")]
+    public SwitchParameter AsJob { get; set; }
+
+    /// <summary>
+    /// Unregister the consumer after this number of messages have been processed. The consumer may continue
+    /// running after this number of messages have been processed if there were messages in-flight.
+    /// </summary>
+    [Parameter(ParameterSetName = ConsumeParameterSet)]
+    [ValidateRange(1ul, ulong.MaxValue)]
+    [ArgumentCompletions("1", "10", "100", "1000")]
+    [Alias("MaxCount")]
+    public ulong UnregisterAfterCount { get; set; } = ulong.MaxValue;
+
+    /// <summary>
+    /// Unregister the consumer after this interval has elapsed with no message to consume being delivered
+    /// to the queue.
+    /// </summary>
+    [Parameter(ParameterSetName = ConsumeParameterSet)]
+    [ArgumentCompletions("00:00:05", "00:00:30", "00:01:00")]
+    [ValidateRange("00:00:01", "10675199.02:48:05.4775807")]
+    public TimeSpan UnregisterAfterWindow { get; set; } = TimeSpan.MaxValue;
+
+    /// <summary>
+    /// Sets the prefetch count on the channel that the consumer is registered with. Useful
+    /// primarily in manual-ack mode to prevent draining the queue and being unable to process
+    /// at the rate of delivery. Be aware, with auto-ack mode this is effectively ignored.
+    /// It must be set if you are attempting to batch processing, because the default is 1. When
+    /// the number of unacknowledged messages recevied by the consumer reaches this count, the
+    /// broker will not deliver more messages to the consumer until another message is processed
+    /// (via ack/nack).
+    /// </summary>
+    [Parameter(ParameterSetName = ConsumeParameterSet)]
+    [ArgumentCompletions("1", "10", "100", "1000")]
+    public ushort PrefetchCount { get; set; } = 1;
+
     [Parameter(Mandatory = true)]
     [RabbitConnectionCompleter]
     [RabbitConnection]
     public PSRabbitConnection Connection { get; set; } = null!;
 
     protected override async Task ProcessRecordAsync()
+    {
+        switch (ParameterSetName)
+        {
+            case GetParameterSet:
+            case PeekParameterSet:
+                await Get();
+                break;
+            case ConsumeParameterSet:
+                await Job();
+                break;
+            default:
+                throw new UnreachableException("Is the parameter set implemented?");
+        }
+    }
+
+    private async Task Get()
     {
         var channel = await Connection.GetDefaultChannel(PipelineStopToken).ConfigureAwait(false);
 
@@ -105,5 +168,26 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
         {
             await WriteErrorAsync(error);
         }
+    }
+
+    private async Task Job()
+    {
+        // The job owns the channel, so create a new one for it.
+        // This also prevents any error in the job from breaking other users of the DefaultChannel.
+        var channel = await Connection
+            .GetConnection()
+            .CreateChannelAsync(null, PipelineStopToken)
+            .ConfigureAwait(false);
+
+        var job = new ConsumerJob(channel, Queue)
+        {
+            UnregisterAfterCount = UnregisterAfterCount,
+            UnregisterAfterWindow = UnregisterAfterWindow,
+            AutoAck = !ManualAck.IsPresent,
+            PrefetchCount = PrefetchCount,
+        };
+        JobRepository.Add(job);
+        await WriteObjectAsync(job).ConfigureAwait(false);
+        _ = job.StartJobAsync();
     }
 }
