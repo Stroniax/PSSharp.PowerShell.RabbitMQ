@@ -221,7 +221,7 @@ public sealed class SendRabbitMqMessageCommand : RmqCmdlet
             return;
         }
 
-        ManagementPublishResponse response;
+        PublishResponse response;
         try
         {
             response = await client.PublishMessage(

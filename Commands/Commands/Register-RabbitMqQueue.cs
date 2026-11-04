@@ -16,7 +16,7 @@ namespace PSSharp.PowerShell.RabbitMQ.Commands;
     DefaultParameterSetName = AmqpParameterSet
 )]
 [OutputType(typeof(QueueDeclareOk), ParameterSetName = [AmqpParameterSet])]
-[OutputType(typeof(ManagementQueueResponse), ParameterSetName = [ManagementParameterSet])]
+[OutputType(typeof(QueueDetails), ParameterSetName = [ManagementParameterSet])]
 public sealed class RegisterRabbitMqQueueCommand : RmqCmdlet, IDynamicParameters
 {
     private const string Noun = "RabbitMqQueue";

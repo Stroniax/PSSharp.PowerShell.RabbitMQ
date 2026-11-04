@@ -2,7 +2,7 @@
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands.Management;
 
-internal sealed record ManagementQueueDeclare
+public sealed record QueueDeclareOptions
 {
     [JsonPropertyName("auto_delete")]
     public bool AutoDelete { get; init; }

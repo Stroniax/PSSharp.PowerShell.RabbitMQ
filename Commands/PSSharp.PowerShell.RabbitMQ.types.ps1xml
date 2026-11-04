@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <Types>
     <Type>
-        <Name>PSSharp.PowerShell.RabbitMQ.Commands.Management.ManagementQueueResponse</Name>
+        <Name>PSSharp.PowerShell.RabbitMQ.Commands.Management.QueueDetails</Name>
         <Members>
             <AliasProperty>
                 <Name>QueueName</Name>

@@ -95,6 +95,66 @@ internal sealed class BasicPropertiesJsonConverter : JsonConverter<IReadOnlyBasi
         JsonSerializerOptions options
     )
     {
-        throw new NotImplementedException();
+        writer.WriteStartObject();
+
+        if (value.IsAppIdPresent())
+        {
+            writer.WriteString("app_id", value.AppId);
+        }
+        if (value.IsClusterIdPresent())
+        {
+            writer.WriteString("cluster_id", value.ClusterId);
+        }
+        if (value.IsContentTypePresent())
+        {
+            writer.WriteString("content_type", value.ContentType);
+        }
+        if (value.IsContentEncodingPresent())
+        {
+            writer.WriteString("content_encoding", value.ContentEncoding);
+        }
+        if (value.IsCorrelationIdPresent())
+        {
+            writer.WriteString("correlation_id", value.CorrelationId);
+        }
+        if (value.IsDeliveryModePresent())
+        {
+            writer.WriteNumber("delivery_mode", (int)value.DeliveryMode);
+        }
+        if (value.IsExpirationPresent())
+        {
+            writer.WriteString("expiration", value.Expiration);
+        }
+        if (value.IsMessageIdPresent())
+        {
+            writer.WriteString("message_id", value.MessageId);
+        }
+        if (value.IsPriorityPresent())
+        {
+            writer.WriteNumber("priority", value.Priority);
+        }
+        if (value.IsTypePresent())
+        {
+            writer.WriteString("type", value.Type);
+        }
+        if (value.IsUserIdPresent())
+        {
+            writer.WriteString("user_id", value.UserId);
+        }
+        if (value.IsTimestampPresent())
+        {
+            writer.WriteNumber("timestamp", value.Timestamp.UnixTime);
+        }
+        if (value.IsHeadersPresent())
+        {
+            writer.WritePropertyName("headers");
+            JsonSerializer.Serialize(writer, value.Headers, options);
+        }
+        if (value.IsReplyToPresent())
+        {
+            writer.WriteString("reply_to", value.ReplyTo);
+        }
+
+        writer.WriteEndObject();
     }
 }

@@ -220,7 +220,7 @@ public record PSRabbitMessage
     }
 
     internal static bool FromManagement(
-        ManagementGetResponse get,
+        Message get,
         PSRabbitMessageSerialization? serialization,
         out PSRabbitMessage message,
         [MaybeNullWhen(true)] out ErrorRecord error

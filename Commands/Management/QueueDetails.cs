@@ -2,7 +2,7 @@
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands.Management;
 
-public sealed record ManagementQueueResponse
+public sealed record QueueDetails
 {
     [JsonPropertyName("name")]
     public required string Name { get; init; }
@@ -22,5 +22,5 @@ public sealed record ManagementQueueResponse
     [JsonExtensionData]
     public IDictionary<string, object?>? AdditionalProperties { get; set; }
 
-    public static implicit operator string(ManagementQueueResponse queue) => queue.Name;
+    public static implicit operator string(QueueDetails queue) => queue.Name;
 }

@@ -3,7 +3,7 @@ using RabbitMQ.Client;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands.Management;
 
-internal sealed record ManagementGetResponse
+public sealed record Message
 {
     [JsonPropertyName("payload_bytes")]
     public ulong PayloadBytes { get; init; }

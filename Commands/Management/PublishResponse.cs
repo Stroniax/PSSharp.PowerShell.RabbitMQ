@@ -1,6 +1,6 @@
 ﻿namespace PSSharp.PowerShell.RabbitMQ.Commands.Management;
 
-internal sealed record ManagementPublishResponse
+public sealed record PublishResponse
 {
     public bool Routed { get; init; }
 }

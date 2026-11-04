@@ -39,7 +39,7 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
         return new("Basic", b64);
     }
 
-    public async Task<ManagementPublishResponse> PublishMessage(
+    public async Task<PublishResponse> PublishMessage(
         string vhost,
         string exchange,
         string routingKey,
@@ -55,28 +55,12 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
 
         var messagePayload = Convert.ToBase64String(payload);
 
-        var body = new
+        var body = new PublishRequest
         {
-            properties = new
-            {
-                app_id = properties.AppId,
-                cluster_id = properties.ClusterId,
-                content_type = properties.ContentType,
-                content_encoding = properties.ContentEncoding,
-                correlation_id = properties.CorrelationId,
-                delivery_mode = properties.DeliveryMode,
-                expiration = properties.Expiration,
-                message_id = properties.MessageId,
-                priority = properties.Priority,
-                type = properties.Type,
-                user_id = properties.UserId,
-                timestamp = properties.Timestamp.UnixTime,
-                headers = properties.Headers,
-                reply_to = properties.ReplyTo,
-            },
-            routing_key = routingKey,
-            payload = messagePayload,
-            payload_encoding = "base64",
+            Properties = properties,
+            RoutingKey = routingKey,
+            Payload = messagePayload,
+            PayloadEncoding = "base64",
         };
 
         var vhostPart = Uri.EscapeDataString(vhost);
@@ -85,19 +69,20 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
             .PostAsJsonAsync(
                 $"/api/exchanges/{vhostPart}/{exchangePart}/publish",
                 body,
-                MANAGEMENT_JSON_OPTIONS,
+                ManagementApiJsonContext.Default.PublishRequest,
                 cancellationToken
             )
             .ConfigureAwait(false);
 
         await CheckManagementHttpStatusCode(response, cancellationToken).ConfigureAwait(false);
-        var responseContent = await response.Content.ReadFromJsonAsync<ManagementPublishResponse>(
+        var responseContent = await response.Content.ReadFromJsonAsync(
+            ManagementApiJsonContext.Default.PublishResponse,
             cancellationToken
         );
         return responseContent!;
     }
 
-    public async Task<ManagementGetResponse[]> GetMessages(
+    public async Task<Message[]> GetMessages(
         string vhost,
         string queueName,
         ulong count,
@@ -112,19 +97,20 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
 
         using var response = await _http.PostAsJsonAsync(
             path,
-            new
+            new MessageRequest
             {
-                count,
-                ackmode,
-                encoding,
+                Count = count,
+                AckMode = ackmode,
+                Encoding = encoding,
             },
-            MANAGEMENT_JSON_OPTIONS,
+            ManagementApiJsonContext.Default.MessageRequest,
             cancellationToken
         );
 
         await CheckManagementHttpStatusCode(response, cancellationToken);
 
-        var data = await response.Content.ReadFromJsonAsync<ManagementGetResponse[]>(
+        var data = await response.Content.ReadFromJsonAsync(
+            ManagementApiJsonContext.Default.MessageArray,
             cancellationToken
         );
         return data!;
@@ -133,7 +119,7 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
     public async Task DeclareQueue(
         string vhost,
         string queue,
-        ManagementQueueDeclare args,
+        QueueDeclareOptions args,
         CancellationToken cancellationToken
     )
     {
@@ -146,19 +132,22 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
         using var response = await _http.PutAsJsonAsync(
             $"/api/queues/{vhostPart}/{queuePart}",
             args,
-            MANAGEMENT_JSON_OPTIONS,
+            ManagementApiJsonContext.Default.QueueDeclareOptions,
             cancellationToken
         );
 
         await CheckManagementHttpStatusCode(response, cancellationToken);
     }
 
-    public async Task<ManagementQueueResponse> GetQueue(
+    public async Task<QueueDetails> GetQueue(
         string vhost,
         string queue,
         CancellationToken cancellationToken
     )
     {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentException.ThrowIfNullOrEmpty(queue);
+
         var vhostPart = Uri.EscapeDataString(vhost);
         var queuePart = Uri.EscapeDataString(queue);
 
@@ -167,10 +156,59 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
             cancellationToken
         );
 
-        var data = await response.Content.ReadFromJsonAsync<ManagementQueueResponse>(
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+
+        var data = await response.Content.ReadFromJsonAsync(
+            ManagementApiJsonContext.Default.QueueDetails,
             cancellationToken
         );
         return data!;
+    }
+
+    /// <returns><see langword="true"/> if the queue existed, <see langword="false"/> if it was <see cref="HttpStatusCode.NotFound"/>.</returns>
+    public async Task<bool> DeleteQueue(
+        string vhost,
+        string queue,
+        DeleteQueueOptions options,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentException.ThrowIfNullOrEmpty(queue);
+
+        var vhostPart = Uri.EscapeDataString(vhost);
+        var queuePart = Uri.EscapeDataString(queue);
+
+        var ifEmpty = options.IfEmpty ? "true" : "";
+        var ifUnused = options.IfUnused ? "true" : "";
+        using var response = await _http.DeleteAsync(
+            $"/api/queues/{vhostPart}/{queuePart}?if-empty={ifEmpty}&if-unused={ifUnused}",
+            cancellationToken
+        );
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return false;
+        }
+
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+        return true;
+    }
+
+    public async Task PurgeQueue(string vhost, string queue, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentException.ThrowIfNullOrEmpty(queue);
+
+        var vhostPart = Uri.EscapeDataString(vhost);
+        var queuePart = Uri.EscapeDataString(queue);
+
+        using var response = await _http.DeleteAsync(
+            $"/api/queues/{vhostPart}/{queuePart}/contents",
+            cancellationToken
+        );
+
+        await CheckManagementHttpStatusCode(response, cancellationToken);
     }
 
     private static async Task CheckManagementHttpStatusCode(
@@ -189,11 +227,20 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
                 };
                 ;
             case HttpStatusCode.BadRequest:
+                var description = await response.Content.ReadFromJsonAsync(
+                    ManagementApiJsonContext.Default.ApiError,
+                    cancellationToken
+                );
                 throw new InvalidOperationException(
-                    "The RabbitMQ management API returned status code 400 Bad Request."
+                    $"The RabbitMQ management API returned status code 400 Bad Request: {description?.Reason}."
                 )
                 {
-                    Data = { ["StatusCode"] = 400 },
+                    Data =
+                    {
+                        ["StatusCode"] = 400,
+                        ["Error"] = description?.Error,
+                        ["Reason"] = description?.Reason,
+                    },
                 };
 
             case HttpStatusCode.Forbidden:
@@ -222,15 +269,4 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
     {
         _http.Dispose();
     }
-
-    /// <summary>
-    /// Null cmdlet parameters need to be not included. RabbitMQ does not support the
-    /// json literal `null`, rather it expects those members to be not present.
-    /// </summary>
-    private static readonly JsonSerializerOptions MANAGEMENT_JSON_OPTIONS = new(
-        JsonSerializerDefaults.Web
-    )
-    {
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    };
 }
