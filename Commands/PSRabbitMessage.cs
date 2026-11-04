@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Management.Automation;
 using System.Text;
 using Microsoft.PowerShell.Commands;
+using PSSharp.PowerShell.RabbitMQ.Commands.Management;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
