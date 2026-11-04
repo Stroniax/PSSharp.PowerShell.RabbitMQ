@@ -52,7 +52,7 @@ internal sealed class BasicPropertiesJsonConverter : JsonConverter<IReadOnlyBasi
                         props.DeliveryMode = (DeliveryModes)reader.GetInt32();
                         break;
                     case "headers":
-                        props.Headers = JsonSerializer.Deserialize<Dictionary<string, object?>>(
+                        props.Headers = JsonSerializer.Deserialize<IDictionary<string, object?>>(
                             ref reader,
                             options
                         );
