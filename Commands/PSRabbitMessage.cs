@@ -66,27 +66,76 @@ public record PSRabbitMessage
             DeliveryTag = deliveryTag;
         }
 
+        private const int RESPOND_NONE = 0;
+        private const int RESPOND_IN_PROGRESS = 1;
+        private const int RESPOND_SENT = 2;
+
+        private int _responded = RESPOND_NONE;
+
         internal IChannel Channel { get; }
         public ulong DeliveryTag { get; }
 
+        public bool HasResponded() => _responded == RESPOND_SENT;
+
         public async Task AckAsync(CancellationToken cancellationToken)
         {
+            using var trackResponseStatus = StartRespond();
             await Channel.BasicAckAsync(DeliveryTag, false, cancellationToken);
         }
 
         public async Task NackAsync(bool requeue, CancellationToken cancellationToken)
         {
+            using var trackResponseStatus = StartRespond();
             await Channel.BasicNackAsync(DeliveryTag, false, requeue, cancellationToken);
         }
 
         public async Task RejectAsync(bool requeue, CancellationToken cancellationToken)
         {
+            using var trackResponseStatus = StartRespond();
             await Channel.BasicRejectAsync(DeliveryTag, requeue, cancellationToken);
+        }
+
+        private RespondInProgress StartRespond()
+        {
+            var was = Interlocked.CompareExchange(
+                ref _responded,
+                RESPOND_IN_PROGRESS,
+                RESPOND_NONE
+            );
+
+            return was switch
+            {
+                RESPOND_NONE => new(this),
+                RESPOND_IN_PROGRESS => throw new InvalidOperationException(
+                    "The message is presently being responded to. Be sure to await the Task returned from Ack/Nack/Reject and do not call another operation on the same instance concurrently."
+                ),
+                RESPOND_SENT => throw new InvalidOperationException(
+                    "The message has already been responded to."
+                ),
+                _ => throw new UnreachableException(),
+            };
+        }
+
+        private struct RespondInProgress(InFlightPSRabbitMessage p) : IDisposable
+        {
+            private int _isDisposed;
+
+            public void Dispose()
+            {
+                if (Interlocked.CompareExchange(ref _isDisposed, 1, 0) == 0)
+                {
+                    Interlocked.CompareExchange(
+                        ref p._responded,
+                        RESPOND_SENT,
+                        RESPOND_IN_PROGRESS
+                    );
+                }
+            }
         }
     }
 
     internal static bool FromGet(
-        IChannel channel,
+        IChannel? channel,
         BasicGetResult get,
         PSRabbitMessageSerialization? serialization,
         out PSRabbitMessage message,
@@ -97,24 +146,41 @@ public record PSRabbitMessage
 
         ParseBody(serialization.Value, get.Body, out var body, out error);
 
-        message = new InFlightPSRabbitMessage(
-            channel,
-            body,
-            get.Exchange,
-            get.RoutingKey,
-            get.DeliveryTag,
-            get.Redelivered,
-            get.BasicProperties,
-            get.Body.ToArray()
-        )
+        if (channel is null)
         {
-            MessageCount = get.MessageCount,
-        };
+            message = new(
+                body,
+                get.Exchange,
+                get.RoutingKey,
+                get.Redelivered,
+                get.BasicProperties,
+                get.Body.ToArray()
+            )
+            {
+                MessageCount = get.MessageCount,
+            };
+        }
+        else
+        {
+            message = new InFlightPSRabbitMessage(
+                channel,
+                body,
+                get.Exchange,
+                get.RoutingKey,
+                get.DeliveryTag,
+                get.Redelivered,
+                get.BasicProperties,
+                get.Body.ToArray()
+            )
+            {
+                MessageCount = get.MessageCount,
+            };
+        }
         return error is null;
     }
 
     internal static bool FromDeliver(
-        IChannel channel,
+        IChannel? channel,
         BasicDeliverEventArgs deliver,
         PSRabbitMessageSerialization? serialization,
         out PSRabbitMessage message,
@@ -125,16 +191,30 @@ public record PSRabbitMessage
 
         ParseBody(serialization.Value, deliver.Body, out var body, out error);
 
-        message = new InFlightPSRabbitMessage(
-            channel,
-            body,
-            deliver.Exchange,
-            deliver.RoutingKey,
-            deliver.DeliveryTag,
-            deliver.Redelivered,
-            deliver.BasicProperties,
-            deliver.Body.ToArray()
-        );
+        if (channel is null)
+        {
+            message = new(
+                body,
+                deliver.Exchange,
+                deliver.RoutingKey,
+                deliver.Redelivered,
+                deliver.BasicProperties,
+                deliver.Body.ToArray()
+            );
+        }
+        else
+        {
+            message = new InFlightPSRabbitMessage(
+                channel,
+                body,
+                deliver.Exchange,
+                deliver.RoutingKey,
+                deliver.DeliveryTag,
+                deliver.Redelivered,
+                deliver.BasicProperties,
+                deliver.Body.ToArray()
+            );
+        }
         return error is null;
     }
 

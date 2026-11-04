@@ -22,6 +22,7 @@ public sealed class ConsumerJob : Job
     public TimeSpan UnregisterAfterWindow { get; init; } =
         TimeSpan.FromMilliseconds(uint.MaxValue - 1);
     public bool AutoAck { get; init; }
+    public PSRabbitMessageSerialization? Serialization { get; init; }
 
     /// <summary>
     /// How many messages to queue ('in-flight') in the job before waiting for the messages to be processed.
@@ -73,7 +74,15 @@ public sealed class ConsumerJob : Job
         {
             _windowWatcher?.Reset();
 
-            if (!PSRabbitMessage.FromDeliver(_channel, e, null, out var message, out var error))
+            if (
+                !PSRabbitMessage.FromDeliver(
+                    AutoAck ? null : _channel,
+                    e,
+                    Serialization,
+                    out var message,
+                    out var error
+                )
+            )
             {
                 Error.Add(error);
             }

@@ -11,10 +11,21 @@ public sealed class PSRabbitConnection(IConnection connection)
 
     internal async ValueTask<IChannel> GetDefaultChannel(CancellationToken cancellationToken)
     {
-        return _defaultChannel ??= await _connection.CreateChannelAsync(
+        // if a former method caused a channel-level failure, reset the default channel and move on
+        // see callers of DefaultChannel for how it is used; this member is meant to be "recoverable"
+        // the channel is referenced by the PSRabbitMessage for ack/nack purposes
+        if (_defaultChannel?.IsClosed ?? false)
+        {
+            await _defaultChannel.DisposeAsync();
+            _defaultChannel = null;
+        }
+
+        _defaultChannel ??= await _connection.CreateChannelAsync(
             new(true, true),
             cancellationToken
         );
+
+        return _defaultChannel;
     }
 
     internal bool TryGetDefaultChannel([MaybeNullWhen(false)] out IChannel channel)

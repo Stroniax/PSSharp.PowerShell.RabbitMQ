@@ -218,7 +218,7 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
 
         if (
             !PSRabbitMessage.FromGet(
-                channel,
+                ManualAck.IsPresent ? channel : null,
                 message,
                 Serialization,
                 out var psmessage,
@@ -257,6 +257,7 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
             UnregisterAfterWindow = UnregisterAfterWindow,
             AutoAck = !ManualAck.IsPresent,
             PrefetchCount = PrefetchCount,
+            Serialization = Serialization,
         };
         JobRepository.Add(job);
         await WriteObjectAsync(job).ConfigureAwait(false);

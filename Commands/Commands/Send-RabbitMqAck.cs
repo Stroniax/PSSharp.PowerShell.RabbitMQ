@@ -27,10 +27,27 @@ public sealed class SendRabbitMqAckCommand : RmqCmdlet
 
         if (Message is not IInFlightMessage inFlight)
         {
-            var ex = new InvalidOperationException(
-                "The message is not owned by the broker. It cannot be acknowledged. This may occur if the message was received from the RabbitMQ management API."
+            var ex = new ArgumentException(
+                "The message is not owned by the broker. It cannot be negatively acknowledged. This may occur if the message was received from the RabbitMQ management API or with AutoAck=true.",
+                nameof(Message)
             );
             var er = new ErrorRecord(ex, "NotInFlight", ErrorCategory.InvalidArgument, Message);
+            await WriteErrorAsync(er);
+            return;
+        }
+
+        if (inFlight.HasResponded())
+        {
+            var ex = new ArgumentException(
+                "The message has already been responded to (whether by ack, nack, or otherwise).",
+                nameof(Message)
+            );
+            var er = new ErrorRecord(
+                ex,
+                "AlreadyResponded",
+                ErrorCategory.InvalidArgument,
+                Message
+            );
             await WriteErrorAsync(er);
             return;
         }
