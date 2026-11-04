@@ -21,16 +21,8 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
     public string Queue { get; set; } = string.Empty;
 
     /// <summary>
-    /// <para>
-    /// Raise an error if there is no message in the queue.
-    /// </para>
-    /// <para>
-    /// When using the management API (via <c>-ManagementUri</c> and affiliated parameters) the
-    /// <c>-UnregisterAfterCount</c> parameter is acceptable alongside this parameter. When both parameters are
-    /// provided, the behavior of <c>-Mandatory:$true</c> is to only write an error if there were <em>no</em>
-    /// messages in the queue. If any messages were retrieved, even if it was not the requested amount, the
-    /// cmdlet will not indicate error.
-    /// </para>
+    /// Raise an error if no message can be delivered. If there are any messages, even if the quantity
+    /// does not reach a specified <c>-Count</c>, no error will be emitted.
     /// </summary>
     [Parameter(ParameterSetName = PeekParameterSet)]
     [Parameter(ParameterSetName = GetParameterSet)]
@@ -85,20 +77,25 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
     public SwitchParameter AsJob { get; set; }
 
     /// <summary>
-    /// Unregister the consumer after this number of messages have been processed. The consumer may continue
-    /// running after this number of messages have been processed if there were messages in-flight.
     /// <para>
-    /// If the caller is using the management API (via the <c>-ManagementUri</c> and associated parameters),
-    /// this is recognized as the number of messages to fetch from the management API. See note on
-    /// <c>-Mandatory</c> for related behavior.
+    /// When consuming with a dedicated consumer (via <c>-AsJob</c>), the consumer will unregister after this
+    /// number of messages has been processed. The consumer may have received more messages according to the
+    /// <see cref="PrefetchCount"/> which it will continue to process even after sending the <c>basic.cancel</c>.
+    /// </para>
+    /// <para>
+    /// For <c>basic.get</c> (except <c>-Peek</c> which does not support <c>-Count</c> due to possible sequencing
+    /// behavior and duplicate deliveries that may arise) or the management API (via <c>-ManagementUri</c>),
+    /// the cmdlet will attempt to retrieve up to this number of messages. If there are not this many messages
+    /// available, the cmdlet will only retrieve until the endpoint does not deliver a message. See note on the
+    /// <c>-Mandatory</c> parameter for related behavior.
     /// </para>
     /// </summary>
     [Parameter(ParameterSetName = ConsumeParameterSet)]
     [Parameter(ParameterSetName = ManagementParameterSet)]
+    [Parameter(ParameterSetName = GetParameterSet)]
     [ValidateRange(1ul, ulong.MaxValue)]
     [ArgumentCompletions("1", "10", "100", "1000")]
-    [Alias("MaxCount")]
-    public ulong UnregisterAfterCount { get; set; } = ulong.MaxValue;
+    public ulong Count { get; set; } = 1;
 
     /// <summary>
     /// Unregister the consumer after this interval has elapsed with no message to consume being delivered
@@ -229,6 +226,32 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
             await WriteErrorAsync(error);
         }
         await WriteObjectAsync(psmessage);
+
+        // Retrieve up to `-Count $SomeNumber` messages or until the queue is empty
+        // For -Peek, the Count must be 1 (default value, not allowed to specify in parameter set)
+        for (ulong i = 1; i < Count; i++)
+        {
+            message = await channel.BasicGetAsync(Queue, autoAck, PipelineStopToken);
+
+            if (message is null)
+            {
+                break;
+            }
+
+            if (
+                !PSRabbitMessage.FromGet(
+                    ManualAck.IsPresent ? channel : null,
+                    message,
+                    Serialization,
+                    out psmessage,
+                    out error
+                )
+            )
+            {
+                await WriteErrorAsync(error);
+            }
+            await WriteObjectAsync(psmessage);
+        }
     }
 
     private ErrorRecord ErrorMandatoryMessage()
@@ -253,7 +276,9 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
 
         var job = new ConsumerJob(channel, Queue)
         {
-            UnregisterAfterCount = UnregisterAfterCount,
+            UnregisterAfterCount = MyInvocation.BoundParameters.ContainsKey(nameof(Count))
+                ? Count
+                : ulong.MaxValue,
             UnregisterAfterWindow = UnregisterAfterWindow,
             AutoAck = !ManualAck.IsPresent,
             PrefetchCount = PrefetchCount,
@@ -281,13 +306,10 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
         }
 
         using var client = new ManagementClient(uri, cred);
-        var maxCount = MyInvocation.BoundParameters.ContainsKey(nameof(UnregisterAfterCount))
-            ? UnregisterAfterCount
-            : 1;
         var messages = await client.GetAsync(
             VHost,
             Queue,
-            maxCount,
+            Count,
             AckMode,
             "base64",
             PipelineStopToken
