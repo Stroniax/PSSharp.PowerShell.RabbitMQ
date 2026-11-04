@@ -52,9 +52,9 @@ public sealed class SendRabbitMqMessageCommand : RmqCmdlet
     public PSRabbitConnection? Connection { get; set; }
 
     [Parameter(Mandatory = true, Position = 5, ParameterSetName = ManagementParameterSet)]
+    [ManagementServerUriCompleter]
     [ValidateAbsoluteUri]
     [ValidateUriScheme("http", "https")]
-    [ManagementServerUriCompleter]
     public Uri? ManagementUri { get; set; }
 
     [Parameter(Position = 6, ParameterSetName = ManagementParameterSet)]
@@ -224,7 +224,7 @@ public sealed class SendRabbitMqMessageCommand : RmqCmdlet
         ManagementPublishResponse response;
         try
         {
-            response = await client.PublishAsync(
+            response = await client.PublishMessage(
                 VHost,
                 Exchange,
                 RoutingKey,

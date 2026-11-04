@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Diagnostics;
 using System.Management.Automation;
+using PSSharp.PowerShell.RabbitMQ.Commands.Management;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Exceptions;
 
@@ -14,10 +15,13 @@ namespace PSSharp.PowerShell.RabbitMQ.Commands;
     ConfirmImpact = ConfirmImpact.Low,
     DefaultParameterSetName = AmqpParameterSet
 )]
+[OutputType(typeof(QueueDeclareOk), ParameterSetName = [AmqpParameterSet])]
+[OutputType(typeof(ManagementQueueResponse), ParameterSetName = [ManagementParameterSet])]
 public sealed class RegisterRabbitMqQueueCommand : RmqCmdlet, IDynamicParameters
 {
     private const string Noun = "RabbitMqQueue";
     private const string AmqpParameterSet = "Amqp";
+    private const string ManagementParameterSet = "Management";
 
     /// <summary>
     /// According to the AMQP specification, if the queue name is empty a queue name will be generated
@@ -32,7 +36,7 @@ public sealed class RegisterRabbitMqQueueCommand : RmqCmdlet, IDynamicParameters
     [Parameter(ValueFromPipelineByPropertyName = true)]
     public SwitchParameter Durable { get; set; }
 
-    [Parameter(ValueFromPipelineByPropertyName = true)]
+    [Parameter(ValueFromPipelineByPropertyName = true, ParameterSetName = AmqpParameterSet)]
     public SwitchParameter Exclusive { get; set; }
 
     [Parameter(ValueFromPipelineByPropertyName = true)]
@@ -46,6 +50,22 @@ public sealed class RegisterRabbitMqQueueCommand : RmqCmdlet, IDynamicParameters
     [RabbitConnection]
     public PSRabbitConnection? Connection { get; set; }
 
+    [Parameter(Mandatory = true, ParameterSetName = ManagementParameterSet)]
+    [ManagementServerUriCompleter]
+    [ValidateAbsoluteUri]
+    [ValidateUriScheme("http", "https")]
+    public Uri? ManagementUri { get; set; }
+
+    [Parameter(ParameterSetName = ManagementParameterSet)]
+    [ValidateNotNullOrEmpty]
+    [ArgumentCompletions("/")]
+    public string VHost { get; set; } = "/";
+
+    [Parameter(ParameterSetName = ManagementParameterSet)]
+    [Credential]
+    [ArgumentCompletions("guest")]
+    public PSCredential? Credential { get; set; }
+
     [Parameter]
     public SwitchParameter PassThru { get; set; }
 
@@ -56,7 +76,7 @@ public sealed class RegisterRabbitMqQueueCommand : RmqCmdlet, IDynamicParameters
         return Arguments is null ? _typedArguments : null;
     }
 
-    private Dictionary<string, object?>? ArgumentsDictionary()
+    private Dictionary<string, object?> ArgumentsDictionary()
     {
         if (Arguments is null)
         {
@@ -78,7 +98,9 @@ public sealed class RegisterRabbitMqQueueCommand : RmqCmdlet, IDynamicParameters
             case AmqpParameterSet:
                 await Amqp();
                 break;
-                ;
+            case ManagementParameterSet:
+                await Management();
+                break;
             default:
                 throw new UnreachableException();
         }
@@ -147,6 +169,50 @@ public sealed class RegisterRabbitMqQueueCommand : RmqCmdlet, IDynamicParameters
         }
     }
 
+    private async Task Management()
+    {
+        Debug.Assert(
+            ManagementUri is not null,
+            "Parameter 'ManagementUri' is mandatory for Management parameter set."
+        );
+
+        var cred = Credential?.GetNetworkCredential() ?? ManagementUri.GetNetworkCredential();
+        if (cred is null)
+        {
+            await this.ManagementCredentialRequiredError(ManagementUri);
+            return;
+        }
+
+        using var client = new ManagementClient(ManagementUri.WithoutCredential(), cred);
+
+        if (!await InvokeAsync(() => ShouldProcess(Queue, "declare queue")))
+        {
+            return;
+        }
+
+        // Management API does not support broker-generated queue names so to provide a seamless integration
+        // we can use client-generated names. There's no behavioral difference to emulate, just the name.
+        var queueName = string.IsNullOrEmpty(Queue) ? $"powershell.gen-{Guid.NewGuid():N}" : Queue;
+
+        await client.DeclareQueue(
+            VHost,
+            queueName,
+            new()
+            {
+                Arguments = ArgumentsDictionary(),
+                AutoDelete = AutoDelete,
+                Durable = Durable,
+            },
+            PipelineStopToken
+        );
+
+        if (PassThru)
+        {
+            var response = await client.GetQueue(VHost, queueName, PipelineStopToken);
+            await WriteObjectAsync(response);
+        }
+    }
+
     public sealed class TypedArguments
     {
         [Parameter]
@@ -201,11 +267,11 @@ public sealed class RegisterRabbitMqQueueCommand : RmqCmdlet, IDynamicParameters
             }
             if (MessageTimeToLive is not null)
             {
-                d.Add("x-message-ttl", MessageTimeToLive.Value.TotalMilliseconds);
+                d.Add("x-message-ttl", (uint)MessageTimeToLive.Value.TotalMilliseconds);
             }
             if (Expires is not null)
             {
-                d.Add("x-expires", Expires.Value.TotalMilliseconds);
+                d.Add("x-expires", (uint)Expires.Value.TotalMilliseconds);
             }
             if (MaxLength is not null)
             {

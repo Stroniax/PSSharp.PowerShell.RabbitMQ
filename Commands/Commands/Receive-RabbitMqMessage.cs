@@ -130,6 +130,8 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
 
     [Parameter(Mandatory = true, ParameterSetName = ManagementParameterSet)]
     [ManagementServerUriCompleter]
+    [ValidateAbsoluteUri]
+    [ValidateUriScheme("http", "https")]
     public Uri? ManagementUri { get; set; }
 
     [Parameter(ParameterSetName = ManagementParameterSet)]
@@ -307,7 +309,7 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
         }
 
         using var client = new ManagementClient(uri, cred);
-        var messages = await client.GetAsync(
+        var messages = await client.GetMessages(
             VHost,
             Queue,
             Count,

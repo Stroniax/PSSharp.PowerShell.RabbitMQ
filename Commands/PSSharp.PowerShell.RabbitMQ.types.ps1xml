@@ -1,8 +1,51 @@
 <?xml version="1.0"?>
 <Types>
     <Type>
-        <Name>PSSharp.PowerShell.RabbitMQ.PSRabbitConnection</Name>
+        <Name>PSSharp.PowerShell.RabbitMQ.Commands.Management.ManagementQueueResponse</Name>
         <Members>
+            <AliasProperty>
+                <Name>QueueName</Name>
+                <ReferencedMemberName>Name</ReferencedMemberName>
+            </AliasProperty>
+            <AliasProperty>
+                <Name>MessageCount</Name>
+                <ReferencedMemberName>Messages</ReferencedMemberName>
+            </AliasProperty>
+            <AliasProperty>
+                <Name>ConsumerCount</Name>
+                <ReferencedMemberName>Consumers</ReferencedMemberName>
+            </AliasProperty>
+            <MemberSet>
+                <Name>PSStandardMembers</Name>
+                <Members>
+                    <PropertySet>
+                        <Name>DefaultDisplayPropertySet</Name>
+                        <ReferencedProperties>
+                            <Name>QueueName</Name>
+                            <Name>MessageCount</Name>
+                            <Name>ConsumerCount</Name>
+                        </ReferencedProperties>
+                    </PropertySet>
+                </Members>
+            </MemberSet>
+        </Members>
+    </Type>
+    <Type>
+        <Name>RabbitMQ.Client.QueueDeclareOk</Name>
+        <Members>
+            <MemberSet>
+                <Name>PSStandardMembers</Name>
+                <Members>
+                    <PropertySet>
+                        <Name>DefaultDisplayPropertySet</Name>
+                        <ReferencedProperties>
+                            <Name>QueueName</Name>
+                            <Name>MessageCount</Name>
+                            <Name>ConsumerCount</Name>
+                        </ReferencedProperties>
+                    </PropertySet>
+                </Members>
+            </MemberSet>
         </Members>
     </Type>
 </Types>

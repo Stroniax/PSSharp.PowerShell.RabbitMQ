@@ -39,7 +39,7 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
         return new("Basic", b64);
     }
 
-    public async Task<ManagementPublishResponse> PublishAsync(
+    public async Task<ManagementPublishResponse> PublishMessage(
         string vhost,
         string exchange,
         string routingKey,
@@ -97,7 +97,7 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
         return responseContent!;
     }
 
-    public async Task<ManagementGetResponse[]> GetAsync(
+    public async Task<ManagementGetResponse[]> GetMessages(
         string vhost,
         string queueName,
         ulong count,
@@ -125,6 +125,49 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
         await CheckManagementHttpStatusCode(response, cancellationToken);
 
         var data = await response.Content.ReadFromJsonAsync<ManagementGetResponse[]>(
+            cancellationToken
+        );
+        return data!;
+    }
+
+    public async Task DeclareQueue(
+        string vhost,
+        string queue,
+        ManagementQueueDeclare args,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentException.ThrowIfNullOrEmpty(queue);
+
+        var vhostPart = Uri.EscapeDataString(vhost);
+        var queuePart = Uri.EscapeDataString(queue);
+
+        using var response = await _http.PutAsJsonAsync(
+            $"/api/queues/{vhostPart}/{queuePart}",
+            args,
+            MANAGEMENT_JSON_OPTIONS,
+            cancellationToken
+        );
+
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+    }
+
+    public async Task<ManagementQueueResponse> GetQueue(
+        string vhost,
+        string queue,
+        CancellationToken cancellationToken
+    )
+    {
+        var vhostPart = Uri.EscapeDataString(vhost);
+        var queuePart = Uri.EscapeDataString(queue);
+
+        using var response = await _http.GetAsync(
+            $"/api/queues/{vhostPart}/{queuePart}",
+            cancellationToken
+        );
+
+        var data = await response.Content.ReadFromJsonAsync<ManagementQueueResponse>(
             cancellationToken
         );
         return data!;
@@ -166,7 +209,9 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
         {
             var content = await response.Content.ReadAsStringAsync(cancellationToken);
             throw new HttpRequestException(
-                $"The RabbitMQ management API returned an unsuccessful status code. The response content follows: {content}",
+                $"The RabbitMQ management API returned an unsuccessful status code "
+                    + $"{(int)response.StatusCode} ({response.StatusCode}): {response.ReasonPhrase}. "
+                    + $"The response content follows: {content}",
                 null,
                 response.StatusCode
             );
