@@ -33,6 +33,9 @@ public sealed class UnregisterRabbitMqQueueCommand : RmqCmdlet
     public PSRabbitConnection? Connection { get; set; }
 
     [Parameter(Mandatory = true, ParameterSetName = ManagementParameterSet)]
+    [ManagementServerUriCompleter]
+    [ValidateAbsoluteUri]
+    [ValidateUriScheme("http", "https")]
     public Uri? ManagementUri { get; set; }
 
     [Parameter(ParameterSetName = ManagementParameterSet)]
