@@ -15,9 +15,9 @@ public sealed class UnregisterRabbitMqQueueCommand : RmqCmdlet
     private const string AmqpParameterSet = "Amqp";
     private const string ManagementParameterSet = "Management";
 
-    [Parameter(Mandatory = true, ValueFromPipelineByPropertyName = true)]
+    [Parameter(Mandatory = true, ValueFromPipelineByPropertyName = true, Position = 0)]
     [QueueNameCompleter]
-    [Alias("QueueName")]
+    [Alias("QueueName", "Name")]
     public string Queue { get; set; } = string.Empty;
 
     [Parameter]
