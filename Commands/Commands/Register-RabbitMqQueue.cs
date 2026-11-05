@@ -56,8 +56,9 @@ public sealed class RegisterRabbitMqQueueCommand : RmqCmdlet, IDynamicParameters
     public Uri? ManagementUri { get; set; }
 
     [Parameter(ParameterSetName = ManagementParameterSet)]
+    [Alias("VirtualHost")]
     [ValidateNotNullOrEmpty]
-    [ArgumentCompletions("/")]
+    [VirtualHostCompleter]
     public string VHost { get; set; } = "/";
 
     [Parameter(ParameterSetName = ManagementParameterSet)]

@@ -26,7 +26,8 @@ public abstract class RabbitMqCompletionAttribute
 
         return CompleteArgument(parameterName, toComplete, hostName, vhost, cts.Token)
             .Select(c => c.ToCompletionResult(quote))
-            .ToBlockingEnumerable(cts.Token);
+            .ToBlockingEnumerable(cts.Token)
+            .TakeUntilException();
     }
 
     public sealed override IArgumentCompleter Create()
@@ -101,5 +102,51 @@ public abstract class RabbitMqCompletionAttribute
             // completion they are looking for
             return null;
         }
+    }
+}
+
+file static class Extensions
+{
+    extension<T>(IEnumerable<T> @this)
+    {
+        public CatchEnumerable<T> TakeUntilException() => new(@this);
+    }
+}
+
+file readonly struct CatchEnumerable<T>(IEnumerable<T> inner) : IEnumerable<T>
+{
+    public CatchEnumerator<T> GetEnumerator() => new(inner.GetEnumerator());
+
+    IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+}
+
+file readonly struct CatchEnumerator<T>(IEnumerator<T> inner) : IEnumerator<T>
+{
+    public T Current => inner.Current;
+
+    object? IEnumerator.Current => Current;
+
+    public void Dispose()
+    {
+        inner.Dispose();
+    }
+
+    public bool MoveNext()
+    {
+        try
+        {
+            return inner.MoveNext();
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    public void Reset()
+    {
+        inner.Reset();
     }
 }

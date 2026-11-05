@@ -42,8 +42,9 @@ public sealed class UnregisterRabbitMqQueueCommand : RmqCmdlet
     public PSCredential? Credential { get; set; }
 
     [Parameter(ParameterSetName = ManagementParameterSet)]
+    [Alias("VirtualHost")]
     [ValidateNotNullOrEmpty]
-    [ArgumentCompletions("/")]
+    [VirtualHostCompleter]
     public string VHost { get; set; } = "/";
 
     protected override async Task ProcessRecordAsync()

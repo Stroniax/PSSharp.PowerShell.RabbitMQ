@@ -8,9 +8,9 @@ public sealed record VirtualHost
     public required IDictionary<string, object?> Metadata { get; init; }
     public required string[] Tags { get; init; }
     public string? DefaultQueueType { get; init; }
-    public ulong MessagesReady { get; init; }
-    public ulong MessagesUnacknowledged { get; init; }
+    public ulong? MessagesReady { get; init; }
+    public ulong? MessagesUnacknowledged { get; init; }
     public bool ProtectedFromDeletion { get; init; }
     public bool Tracing { get; init; }
-    public required IDictionary<string, object?> MessageStats { get; init; }
+    public IDictionary<string, object?>? MessageStats { get; init; }
 }

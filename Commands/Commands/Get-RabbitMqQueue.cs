@@ -15,6 +15,12 @@ public sealed class GetRabbitMqQueueCommand : RmqCmdlet
     private const string AllVhostsParameterSet = "AllVirtualHosts";
     private const string VhostParameterSet = "VHost";
 
+    [Parameter(ValueFromPipelineByPropertyName = true, Position = 0)]
+    [Alias("QueueName")]
+    [SupportsWildcards]
+    [QueueNameCompleter]
+    public string? Queue { get; set; }
+
     [Parameter(Mandatory = true)]
     [ManagementServerUriCompleter]
     [ValidateAbsoluteUri]
@@ -26,19 +32,18 @@ public sealed class GetRabbitMqQueueCommand : RmqCmdlet
     [ArgumentCompletions("guest")]
     public PSCredential? Credential { get; set; }
 
-    [Parameter(ValueFromPipelineByPropertyName = true, ParameterSetName = VhostParameterSet)]
+    [Parameter(
+        ValueFromPipelineByPropertyName = true,
+        ParameterSetName = VhostParameterSet,
+        Position = 1
+    )]
+    [Alias("VirtualHost")]
     [ValidateNotNullOrEmpty]
-    [ArgumentCompletions("/")]
+    [VirtualHostCompleter]
     public string VHost { get; set; } = "/";
 
     [Parameter(ParameterSetName = AllVhostsParameterSet)]
     public SwitchParameter AllVirtualHosts { get; set; }
-
-    [Parameter(ValueFromPipelineByPropertyName = true)]
-    [Alias("QueueName")]
-    [SupportsWildcards]
-    [QueueNameCompleter]
-    public string? Queue { get; set; }
 
     protected override async Task ProcessRecordAsync()
     {

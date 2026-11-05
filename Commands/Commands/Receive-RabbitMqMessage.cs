@@ -143,8 +143,9 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
     public PSCredential? Credential { get; set; }
 
     [Parameter(ParameterSetName = ManagementParameterSet)]
+    [Alias("VirtualHost")]
     [ValidateNotNullOrEmpty]
-    [ArgumentCompletions("/")]
+    [VirtualHostCompleter]
     public string VHost { get; set; } = "/";
 
     /// <summary>
