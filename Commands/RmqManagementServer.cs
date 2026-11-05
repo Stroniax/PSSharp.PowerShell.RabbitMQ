@@ -3,10 +3,18 @@ using PSSharp.PowerShell.RabbitMQ.Commands.Management;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
-public sealed class RmqManagementServer
+public sealed class RmqManagementServer : IDisposable
 {
+    private bool _isDisposed;
     public Uri Uri { get; }
-    internal ManagementClient Client { get; }
+    internal ManagementClient Client
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_isDisposed, this);
+            return field;
+        }
+    }
 
     internal RmqManagementServer(Uri uri, ManagementClient client)
     {
@@ -27,7 +35,7 @@ public sealed class RmqManagementServer
     {
         if (_servers.TryRemove(uri, out var server))
         {
-            server.Client.Dispose();
+            server.Dispose();
             return true;
         }
         else
@@ -37,4 +45,15 @@ public sealed class RmqManagementServer
     }
 
     internal static RmqManagementServer[] All() => _servers.Values.ToArray();
+
+    public void Dispose()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+        _isDisposed = true;
+        Client.Dispose();
+        Remove(Uri);
+    }
 }
