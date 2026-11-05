@@ -27,7 +27,7 @@ public sealed class RegisterRabbitMqQueueCommand : RmqCmdlet, IDynamicParameters
     /// by the server.
     /// </summary>
     [Parameter(Mandatory = true, Position = 0, ValueFromPipelineByPropertyName = true)]
-    [Alias("QueueName")]
+    [Alias("QueueName", "Name")]
     [AllowEmptyString]
     [QueueNameCompleter]
     public string Queue { get; set; } = string.Empty;
@@ -55,7 +55,7 @@ public sealed class RegisterRabbitMqQueueCommand : RmqCmdlet, IDynamicParameters
     [ValidateUriScheme("http", "https")]
     public Uri? ManagementUri { get; set; }
 
-    [Parameter(ParameterSetName = ManagementParameterSet)]
+    [Parameter(ParameterSetName = ManagementParameterSet, ValueFromPipelineByPropertyName = true)]
     [Alias("VirtualHost")]
     [ValidateNotNullOrEmpty]
     [VirtualHostCompleter]
@@ -102,7 +102,7 @@ public sealed class RegisterRabbitMqQueueCommand : RmqCmdlet, IDynamicParameters
                 await Management();
                 break;
             default:
-                throw new UnreachableException();
+                throw new UnreachableException("Parameter set is not implemented.");
         }
     }
 
@@ -146,7 +146,7 @@ public sealed class RegisterRabbitMqQueueCommand : RmqCmdlet, IDynamicParameters
                 )
                 {
                     RecommendedAction =
-                        "Do not modify an queue using this cmdlet. Either remove and recreate the queue; or use "
+                        "Do not modify a queue using this cmdlet. Either remove and recreate the queue; or use "
                         + "a policy to manage the queue; or use this cmdlet with the same parameters so that the "
                         + "queue is not modified.",
                 },

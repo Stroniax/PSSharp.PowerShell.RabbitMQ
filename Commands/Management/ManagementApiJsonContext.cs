@@ -4,11 +4,12 @@ using System.Text.Json.Serialization;
 namespace PSSharp.PowerShell.RabbitMQ.Commands.Management;
 
 [JsonSerializable(typeof(ApiError))]
-[JsonSerializable(typeof(Message[]))]
+[JsonSerializable(typeof(Message))]
 [JsonSerializable(typeof(MessageRequest))]
 [JsonSerializable(typeof(PublishRequest))]
 [JsonSerializable(typeof(PublishResponse))]
 [JsonSerializable(typeof(ExchangeDetails))]
+[JsonSerializable(typeof(ExchangeDeclareOptions))]
 [JsonSerializable(typeof(QueueDeclareOptions))]
 [JsonSerializable(typeof(QueueDetails))]
 [JsonSerializable(typeof(VirtualHost))]

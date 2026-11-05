@@ -81,15 +81,18 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
         return responseContent!;
     }
 
-    public async Task<Message[]> GetMessages(
+    public async IAsyncEnumerable<Message> GetMessages(
         string vhost,
         string queueName,
         ulong count,
         string ackmode,
         string encoding,
-        CancellationToken cancellationToken
+        [EnumeratorCancellation] CancellationToken cancellationToken
     )
     {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentException.ThrowIfNullOrEmpty(queueName);
+
         var vhostPart = Uri.EscapeDataString(vhost);
         var queuePart = Uri.EscapeDataString(queueName);
         var path = $"/api/queues/{vhostPart}/{queuePart}/get";
@@ -108,11 +111,15 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
 
         await CheckManagementHttpStatusCode(response, cancellationToken);
 
-        var data = await response.Content.ReadFromJsonAsync(
-            ManagementApiJsonContext.Default.MessageArray,
-            cancellationToken
-        );
-        return data!;
+        await foreach (
+            var row in response.Content.ReadFromJsonAsAsyncEnumerable(
+                ManagementApiJsonContext.Default.Message,
+                cancellationToken
+            )
+        )
+        {
+            yield return row!;
+        }
     }
 
     public async IAsyncEnumerable<QueueDetails> ListQueues(
@@ -280,6 +287,49 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
             cancellationToken
         );
         return content;
+    }
+
+    public async Task DeclareExchange(
+        string vhost,
+        string exchangeName,
+        ExchangeDeclareOptions options,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentException.ThrowIfNullOrEmpty(exchangeName);
+
+        var vhostPart = Uri.EscapeDataString(vhost);
+        var exchangePart = Uri.EscapeDataString(exchangeName);
+        var path = $"/api/exchanges/{vhostPart}/{exchangePart}";
+
+        using var response = await _http.PutAsJsonAsync(
+            path,
+            options,
+            ManagementApiJsonContext.Default.ExchangeDeclareOptions,
+            cancellationToken
+        );
+
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+    }
+
+    public async Task DeleteExchange(
+        string vhost,
+        string exchangeName,
+        DeleteExchangeOptions options,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentException.ThrowIfNullOrEmpty(exchangeName);
+
+        var vhostPart = Uri.EscapeDataString(vhost);
+        var exchangePart = Uri.EscapeDataString(exchangeName);
+        var ifUnused = options.IfUnused ? "true" : "false";
+        var uri = $"/api/exchanges/{vhostPart}/{exchangePart}?if-unused={ifUnused}";
+
+        using var response = await _http.DeleteAsync(uri, cancellationToken);
+        await CheckManagementHttpStatusCode(response, cancellationToken);
     }
 
     public async IAsyncEnumerable<VirtualHost> ListVirtualHosts(

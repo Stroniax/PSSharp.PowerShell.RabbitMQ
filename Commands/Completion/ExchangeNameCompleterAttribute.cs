@@ -21,11 +21,11 @@ public sealed class ExchangeNameCompleterAttribute : RabbitMqCompletionAttribute
             .ToAsyncEnumerable()
             .SelectMany(client => client.ListExchanges(vhost, cancellationToken))
             .Select(e => e.Name)
+            .DefaultIfEmpty("amq.default")
             .Where(e => patternToComplete.IsMatch(e))
             .Select(c => new ArgumentCompletionText(
                 c is not { Length: > 1 } ? "amq.default" : c,
                 c is not { Length: > 1 } ? "amq.default (alias: empty string '')" : null
-            ))
-            .DefaultIfEmpty("amq.default");
+            ));
     }
 }

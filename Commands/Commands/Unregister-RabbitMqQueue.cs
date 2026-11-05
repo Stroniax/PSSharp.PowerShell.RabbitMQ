@@ -41,7 +41,7 @@ public sealed class UnregisterRabbitMqQueueCommand : RmqCmdlet
     [ArgumentCompletions("guest")]
     public PSCredential? Credential { get; set; }
 
-    [Parameter(ParameterSetName = ManagementParameterSet)]
+    [Parameter(ParameterSetName = ManagementParameterSet, ValueFromPipelineByPropertyName = true)]
     [Alias("VirtualHost")]
     [ValidateNotNullOrEmpty]
     [VirtualHostCompleter]

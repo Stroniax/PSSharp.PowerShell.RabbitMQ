@@ -61,7 +61,11 @@ public sealed class SendRabbitMqMessageCommand : RmqCmdlet
     [ArgumentCompletions("guest")]
     public PSCredential? Credential { get; set; }
 
-    [Parameter(Position = 7, ParameterSetName = ManagementParameterSet)]
+    [Parameter(
+        Position = 7,
+        ParameterSetName = ManagementParameterSet,
+        ValueFromPipelineByPropertyName = true
+    )]
     [Alias("VirtualHost")]
     [ValidateNotNullOrEmpty]
     [VirtualHostCompleter]

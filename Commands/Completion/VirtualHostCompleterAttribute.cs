@@ -22,8 +22,8 @@ public sealed class VirtualHostCompleterAttribute : RabbitMqCompletionAttribute
             .ToAsyncEnumerable()
             .SelectMany(client => client.ListVirtualHosts(cancellationToken))
             .Select(v => v.Name)
+            .DefaultIfEmpty("/")
             .Where(v => patternToComplete.IsMatch(v))
-            .Select(v => new ArgumentCompletionText(v))
-            .DefaultIfEmpty(new("/"));
+            .Select(v => new ArgumentCompletionText(v));
     }
 }

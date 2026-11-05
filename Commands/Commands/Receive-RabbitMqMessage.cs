@@ -142,7 +142,7 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
     [ArgumentCompletions("guest")]
     public PSCredential? Credential { get; set; }
 
-    [Parameter(ParameterSetName = ManagementParameterSet)]
+    [Parameter(ParameterSetName = ManagementParameterSet, ValueFromPipelineByPropertyName = true)]
     [Alias("VirtualHost")]
     [ValidateNotNullOrEmpty]
     [VirtualHostCompleter]
@@ -313,17 +313,19 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
         }
 
         using var client = new ManagementClient(uri, cred);
-        var messages = await client.GetMessages(
-            VHost,
-            Queue,
-            Count,
-            AckMode,
-            "base64",
-            PipelineStopToken
-        );
-
-        foreach (var message in messages)
+        var messagecount = 0;
+        await foreach (
+            var message in client.GetMessages(
+                VHost,
+                Queue,
+                Count,
+                AckMode,
+                "base64",
+                PipelineStopToken
+            )
+        )
         {
+            messagecount++;
             if (
                 !PSRabbitMessage.FromManagement(
                     message,
@@ -338,8 +340,7 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
             await WriteObjectAsync(psmessage);
         }
 
-        // Batch pipeline callback to write errors into a single callback
-        if (Mandatory.IsPresent && messages.Length == 0)
+        if (Mandatory.IsPresent && messagecount == 0)
         {
             var er = ErrorMandatoryMessage();
             await WriteErrorAsync(er);
