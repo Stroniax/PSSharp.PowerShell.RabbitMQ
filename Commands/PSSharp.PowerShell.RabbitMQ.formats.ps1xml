@@ -98,5 +98,50 @@
                 </ListEntries>
             </ListControl>
         </View>
+        <View>
+            <Name>Default</Name>
+            <ViewSelectedBy>
+                <TypeName>PSSharp.PowerShell.RabbitMQ.Commands.Management.ExchangeDetails</TypeName>
+            </ViewSelectedBy>
+            <GroupBy>
+                <PropertyName>VirtualHost</PropertyName>
+            </GroupBy>
+            <TableControl>
+                <TableHeaders>
+                    <TableColumnHeader>
+                        <Label>Name</Label>
+                    </TableColumnHeader>
+                    <TableColumnHeader />
+                    <TableColumnHeader />
+                    <TableColumnHeader />
+                </TableHeaders>
+                <TableRowEntries>
+                    <TableRowEntry>
+                        <TableColumnItems>
+                            <TableColumnItem>
+                                <ScriptBlock><![CDATA[
+                                    if ($_.Name -eq '') {
+                                        $PSStyle.Dim + 'amq.default' + $PSStyle.Reset
+                                    } elseif ($_.Internal) {
+                                        $PSStyle.Strikethrough + $_.Name + $PSStyle.Reset
+                                    } else {
+                                        $_.Name
+                                    }
+                                ]]></ScriptBlock>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>Type</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>Durable</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>AutoDelete</PropertyName>
+                            </TableColumnItem>
+                        </TableColumnItems>
+                    </TableRowEntry>
+                </TableRowEntries>
+            </TableControl>
+        </View>
     </ViewDefinitions>
 </Configuration>

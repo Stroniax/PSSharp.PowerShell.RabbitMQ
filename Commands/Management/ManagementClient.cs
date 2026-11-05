@@ -4,8 +4,6 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Security.Authentication;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using RabbitMQ.Client;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands.Management;
@@ -231,11 +229,66 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
         await CheckManagementHttpStatusCode(response, cancellationToken);
     }
 
+    public async IAsyncEnumerable<ExchangeDetails> ListExchanges(
+        string? vhost,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        var vhostPart = vhost is null ? null : Uri.EscapeDataString(vhost);
+
+        using var response = await _http.GetAsync($"/api/exchanges/{vhostPart}", cancellationToken);
+
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+
+        await foreach (
+            var row in response.Content.ReadFromJsonAsAsyncEnumerable(
+                ManagementApiJsonContext.Default.ExchangeDetails,
+                cancellationToken
+            )
+        )
+        {
+            yield return row!;
+        }
+    }
+
+    public async Task<ExchangeDetails?> GetExchange(
+        string vhost,
+        string exchangeName,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentNullException.ThrowIfNull(exchangeName);
+
+        var vhostPart = Uri.EscapeDataString(vhost);
+        var exchangePart = exchangeName is "" ? "amq.default" : Uri.EscapeDataString(exchangeName);
+
+        using var response = await _http.GetAsync(
+            $"/api/exchanges/{vhostPart}/{exchangePart}",
+            cancellationToken
+        );
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+
+        var content = await response.Content.ReadFromJsonAsync(
+            ManagementApiJsonContext.Default.ExchangeDetails,
+            cancellationToken
+        );
+        return content;
+    }
+
     public async IAsyncEnumerable<VirtualHost> ListVirtualHosts(
         [EnumeratorCancellation] CancellationToken cancellationToken
     )
     {
         using var response = await _http.GetAsync("/api/vhosts", cancellationToken);
+
+        await CheckManagementHttpStatusCode(response, cancellationToken);
 
         await foreach (
             var row in response.Content.ReadFromJsonAsAsyncEnumerable(

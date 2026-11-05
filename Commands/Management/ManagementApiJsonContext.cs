@@ -8,6 +8,7 @@ namespace PSSharp.PowerShell.RabbitMQ.Commands.Management;
 [JsonSerializable(typeof(MessageRequest))]
 [JsonSerializable(typeof(PublishRequest))]
 [JsonSerializable(typeof(PublishResponse))]
+[JsonSerializable(typeof(ExchangeDetails))]
 [JsonSerializable(typeof(QueueDeclareOptions))]
 [JsonSerializable(typeof(QueueDetails))]
 [JsonSerializable(typeof(VirtualHost))]

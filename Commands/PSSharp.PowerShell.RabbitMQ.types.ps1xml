@@ -15,6 +15,10 @@
                 <Name>ConsumerCount</Name>
                 <ReferencedMemberName>Consumers</ReferencedMemberName>
             </AliasProperty>
+            <AliasProperty>
+                <Name>VirtualHost</Name>
+                <ReferencedMemberName>VHost</ReferencedMemberName>
+            </AliasProperty>
             <MemberSet>
                 <Name>PSStandardMembers</Name>
                 <Members>
@@ -46,6 +50,19 @@
                     </PropertySet>
                 </Members>
             </MemberSet>
+        </Members>
+    </Type>
+    <Type>
+        <Name>PSSharp.PowerShell.RabbitMQ.Commands.Management.ExchangeDetails</Name>
+        <Members>
+            <AliasProperty>
+                <Name>ExchangeName</Name>
+                <ReferencedMemberName>Name</ReferencedMemberName>
+            </AliasProperty>
+            <AliasProperty>
+                <Name>VirtualHost</Name>
+                <ReferencedMemberName>VHost</ReferencedMemberName>
+            </AliasProperty>
         </Members>
     </Type>
 </Types>

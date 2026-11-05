@@ -139,8 +139,24 @@ file readonly struct CatchEnumerator<T>(IEnumerator<T> inner) : IEnumerator<T>
         {
             return inner.MoveNext();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine(ex);
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
             return false;
         }
     }

@@ -16,7 +16,7 @@ public sealed class GetRabbitMqQueueCommand : RmqCmdlet
     private const string VhostParameterSet = "VHost";
 
     [Parameter(ValueFromPipelineByPropertyName = true, Position = 0)]
-    [Alias("QueueName")]
+    [Alias("QueueName", "Name")]
     [SupportsWildcards]
     [QueueNameCompleter]
     public string? Queue { get; set; }
@@ -77,7 +77,7 @@ public sealed class GetRabbitMqQueueCommand : RmqCmdlet
             catch (HttpRequestException httpex)
                 when (httpex.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
-                var ex = new ItemNotFoundException("The queue does not exist", httpex);
+                var ex = new ItemNotFoundException("The queue does not exist.", httpex);
                 var er = new ErrorRecord(ex, "QueueNotFound", ErrorCategory.ObjectNotFound, Queue)
                 {
                     ErrorDetails = new($"No queue named \"{Queue}\" exists on VHost \"{vhost}\"."),

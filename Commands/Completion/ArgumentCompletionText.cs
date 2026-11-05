@@ -9,7 +9,7 @@ public readonly record struct ArgumentCompletionText
         Content = content;
     }
 
-    public ArgumentCompletionText(string content, string tooltip)
+    public ArgumentCompletionText(string content, string? tooltip)
         : this(content)
     {
         Tooltip = tooltip;

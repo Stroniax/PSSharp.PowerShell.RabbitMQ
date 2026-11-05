@@ -30,12 +30,12 @@ public sealed class SendRabbitMqMessageCommand : RmqCmdlet
     public PSObject? Payload { get; set; }
 
     [Parameter(ValueFromPipelineByPropertyName = true, Position = 1)]
-    [ArgumentCompletions("''")]
-    public string Exchange { get; set; } = string.Empty;
-
-    [Parameter(ValueFromPipelineByPropertyName = true, Position = 2)]
     [QueueNameCompleter]
     public string RoutingKey { get; set; } = string.Empty;
+
+    [Parameter(ValueFromPipelineByPropertyName = true, Position = 2)]
+    [ExchangeNameCompleter]
+    public string Exchange { get; set; } = string.Empty;
 
     [Parameter(ValueFromPipelineByPropertyName = true, Position = 3)]
     [ArgumentCompletions("@{}")]

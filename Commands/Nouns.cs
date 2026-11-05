@@ -2,6 +2,7 @@
 
 internal static class Nouns
 {
+    public const string RabbitMqExchange = nameof(RabbitMqExchange);
     public const string RabbitMqQueue = nameof(RabbitMqQueue);
     public const string RabbitMqMessage = nameof(RabbitMqMessage);
     public const string RabbitMqConnection = nameof(RabbitMqConnection);
