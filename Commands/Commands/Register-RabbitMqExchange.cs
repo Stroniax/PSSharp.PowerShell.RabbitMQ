@@ -159,6 +159,12 @@ public sealed class RegisterRabbitMqExchange : RmqCmdlet
         }
 
         using var client = new ManagementClient(ManagementUri.WithoutCredential(), cred);
+
+        if (!await InvokeAsync(() => ShouldProcess(Exchange, "declare exchange")))
+        {
+            return;
+        }
+
         await client.DeclareExchange(
             VHost,
             Exchange,

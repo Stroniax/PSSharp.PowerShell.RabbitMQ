@@ -313,7 +313,7 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
         await CheckManagementHttpStatusCode(response, cancellationToken);
     }
 
-    public async Task DeleteExchange(
+    public async Task<bool> DeleteExchange(
         string vhost,
         string exchangeName,
         DeleteExchangeOptions options,
@@ -329,7 +329,12 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
         var uri = $"/api/exchanges/{vhostPart}/{exchangePart}?if-unused={ifUnused}";
 
         using var response = await _http.DeleteAsync(uri, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return false;
+        }
         await CheckManagementHttpStatusCode(response, cancellationToken);
+        return true;
     }
 
     public async IAsyncEnumerable<VirtualHost> ListVirtualHosts(
