@@ -12,7 +12,7 @@ namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 [Cmdlet(
     VerbsCommunications.Send,
-    Noun,
+    Nouns.RabbitMqMessage,
     SupportsShouldProcess = true,
     DefaultParameterSetName = AmqpParameterSet,
     RemotingCapability = RemotingCapability.OwnedByCommand
@@ -20,7 +20,6 @@ namespace PSSharp.PowerShell.RabbitMQ.Commands;
 [Alias("sdrmq")]
 public sealed class SendRabbitMqMessageCommand : RmqCmdlet
 {
-    private const string Noun = "RabbitMqMessage";
     private const string AmqpParameterSet = "Amqp";
     private const string ManagementParameterSet = "Management";
 

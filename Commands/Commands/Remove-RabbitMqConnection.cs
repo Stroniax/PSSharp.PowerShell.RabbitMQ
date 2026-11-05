@@ -4,14 +4,12 @@ namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 [Cmdlet(
     VerbsCommon.Remove,
-    Noun,
+    Nouns.RabbitMqConnection,
     DefaultParameterSetName = SessionParameterSet,
     SupportsShouldProcess = true
 )]
 public sealed class RemoveRabbitMqConnectionCommand : RmqCmdlet
 {
-    private const string Noun = "RabbitMqConnection";
-
     public const string NameParameterSet = "Name";
     public const string SessionParameterSet = "Session";
     public const string InstanceParameterSet = "InstanceId";

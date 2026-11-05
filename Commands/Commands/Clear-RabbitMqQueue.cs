@@ -6,14 +6,13 @@ namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 [Cmdlet(
     VerbsCommon.Clear,
-    Noun,
+    Nouns.RabbitMqQueue,
     SupportsShouldProcess = true,
     DefaultParameterSetName = AmqpParameterSet,
     RemotingCapability = RemotingCapability.OwnedByCommand
 )]
 public sealed class ClearRabbitMqQueueCommand : RmqCmdlet
 {
-    private const string Noun = "RabbitMqQueue";
     private const string AmqpParameterSet = "Amqp";
     private const string ManagementParameterSet = "Management";
 

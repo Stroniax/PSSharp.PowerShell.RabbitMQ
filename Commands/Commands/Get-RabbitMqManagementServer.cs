@@ -2,11 +2,9 @@
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
-[Cmdlet(VerbsCommon.Get, Noun)]
+[Cmdlet(VerbsCommon.Get, Nouns.RabbitMqManagementServer)]
 public sealed class GetRabbitMqManagementServer : Cmdlet
 {
-    private const string Noun = "RabbitMqManagementServer";
-
     protected override void ProcessRecord()
     {
         WriteObject(RmqManagementServer.All(), true);

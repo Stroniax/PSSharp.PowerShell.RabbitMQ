@@ -2,12 +2,10 @@
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
-[Cmdlet(VerbsCommon.Get, Noun, DefaultParameterSetName = NameParameterSet)]
+[Cmdlet(VerbsCommon.Get, Nouns.RabbitMqConnection, DefaultParameterSetName = NameParameterSet)]
 [OutputType(typeof(PSRabbitConnection))]
 public sealed class GetRabbitMqConnectionCommand : PSCmdlet
 {
-    private const string Noun = "RabbitMqConnection";
-
     private const string InstanceParameterSet = "Instance";
     private const string NameParameterSet = "Name";
 

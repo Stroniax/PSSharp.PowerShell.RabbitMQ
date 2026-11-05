@@ -8,7 +8,7 @@ namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 [Cmdlet(
     VerbsCommon.New,
-    Noun,
+    Nouns.RabbitMqConnection,
     ConfirmImpact = ConfirmImpact.Low,
     DefaultParameterSetName = UriParameterSet,
     RemotingCapability = RemotingCapability.OwnedByCommand,
@@ -16,7 +16,6 @@ namespace PSSharp.PowerShell.RabbitMQ.Commands;
 )]
 public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
 {
-    public const string Noun = "RabbitMqConnection";
     public const string UriParameterSet = "Uri";
     public const string ArgsParameterSet = "Arg";
     public const string FactoryParameterSet = "Factory";

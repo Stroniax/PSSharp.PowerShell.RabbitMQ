@@ -8,10 +8,9 @@ namespace PSSharp.PowerShell.RabbitMQ.Commands;
 /// Registers a RabbitMQ management server. This server can be used for auto-completion and some limited
 /// amount of other stuff probably.
 /// </summary>
-[Cmdlet(VerbsLifecycle.Register, Noun)]
+[Cmdlet(VerbsLifecycle.Register, Nouns.RabbitMqManagementServer)]
 public sealed class RegisterRabbitMqManagementServerCommand : RmqCmdlet
 {
-    private const string Noun = "RabbitMqManagementServer";
     private const string UriParameterSet = "Uri";
 
     [Parameter(ParameterSetName = UriParameterSet, Mandatory = true)]

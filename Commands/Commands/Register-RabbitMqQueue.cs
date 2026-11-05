@@ -9,7 +9,7 @@ namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 [Cmdlet(
     VerbsLifecycle.Register,
-    Noun,
+    Nouns.RabbitMqQueue,
     SupportsShouldProcess = true,
     RemotingCapability = RemotingCapability.OwnedByCommand,
     ConfirmImpact = ConfirmImpact.Low,
@@ -19,7 +19,6 @@ namespace PSSharp.PowerShell.RabbitMQ.Commands;
 [OutputType(typeof(QueueDetails), ParameterSetName = [ManagementParameterSet])]
 public sealed class RegisterRabbitMqQueueCommand : RmqCmdlet, IDynamicParameters
 {
-    private const string Noun = "RabbitMqQueue";
     private const string AmqpParameterSet = "Amqp";
     private const string ManagementParameterSet = "Management";
 

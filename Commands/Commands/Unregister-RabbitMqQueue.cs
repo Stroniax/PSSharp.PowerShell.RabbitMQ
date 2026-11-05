@@ -6,13 +6,12 @@ namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 [Cmdlet(
     VerbsLifecycle.Unregister,
-    Noun,
+    Nouns.RabbitMqQueue,
     SupportsShouldProcess = true,
     DefaultParameterSetName = AmqpParameterSet
 )]
 public sealed class UnregisterRabbitMqQueueCommand : RmqCmdlet
 {
-    private const string Noun = "RabbitMqQueue";
     private const string AmqpParameterSet = "Amqp";
     private const string ManagementParameterSet = "Management";
 

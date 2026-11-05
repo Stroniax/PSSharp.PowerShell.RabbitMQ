@@ -3,11 +3,9 @@ using System.Management.Automation;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
-[Cmdlet(VerbsLifecycle.Unregister, Noun)]
+[Cmdlet(VerbsLifecycle.Unregister, Nouns.RabbitMqManagementServer)]
 public sealed class RemoveRabbitMqManagementServer : Cmdlet
 {
-    private const string Noun = "RabbitMqManagementServer";
-
     [Parameter(Mandatory = true, ValueFromPipeline = true)]
     public RmqManagementServer? ManagementServer { get; set; }
 

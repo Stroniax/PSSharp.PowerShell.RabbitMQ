@@ -5,14 +5,12 @@ namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 [Cmdlet(
     VerbsCommunications.Send,
-    Noun,
+    Nouns.RabbitMqAck,
     SupportsShouldProcess = true,
     RemotingCapability = RemotingCapability.OwnedByCommand
 )]
 public sealed class SendRabbitMqAckCommand : RmqCmdlet
 {
-    private const string Noun = "RabbitMqAck";
-
     [Parameter(Mandatory = true, ValueFromPipeline = true, Position = 0)]
     [Alias("InputObject")]
     [ArgumentCompletions("$")]

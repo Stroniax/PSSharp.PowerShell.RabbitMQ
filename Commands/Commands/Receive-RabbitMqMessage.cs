@@ -4,13 +4,16 @@ using PSSharp.PowerShell.RabbitMQ.Commands.Management;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
-[Cmdlet(VerbsCommunications.Receive, Noun, DefaultParameterSetName = GetParameterSet)]
+[Cmdlet(
+    VerbsCommunications.Receive,
+    Nouns.RabbitMqMessage,
+    DefaultParameterSetName = GetParameterSet
+)]
 [OutputType(typeof(PSRabbitMessage), ParameterSetName = [GetParameterSet, PeekParameterSet])]
 [OutputType(typeof(ConsumerJob), ParameterSetName = [ConsumeParameterSet])]
 [Alias("rcrmq")]
 public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
 {
-    private const string Noun = "RabbitMqMessage";
     private const string PeekParameterSet = "Peek";
     private const string GetParameterSet = "Get";
     private const string ConsumeParameterSet = "Consume";
