@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
 using System.Security.Authentication;
 using System.Text;
 using System.Text.Json;
@@ -116,6 +117,25 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
         return data!;
     }
 
+    public async IAsyncEnumerable<QueueDetails> ListQueues(
+        string? vhost,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        var vhostPart = vhost is null ? string.Empty : Uri.EscapeDataString(vhost);
+
+        await foreach (
+            var row in _http.GetFromJsonAsAsyncEnumerable(
+                $"/api/queues/{vhostPart}",
+                ManagementApiJsonContext.Default.QueueDetails,
+                cancellationToken
+            )
+        )
+        {
+            yield return row!;
+        }
+    }
+
     public async Task DeclareQueue(
         string vhost,
         string queue,
@@ -209,6 +229,23 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
         );
 
         await CheckManagementHttpStatusCode(response, cancellationToken);
+    }
+
+    public async IAsyncEnumerable<VirtualHost> ListVirtualHosts(
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        using var response = await _http.GetAsync("/api/vhosts", cancellationToken);
+
+        await foreach (
+            var row in response.Content.ReadFromJsonAsAsyncEnumerable(
+                ManagementApiJsonContext.Default.VirtualHost,
+                cancellationToken
+            )
+        )
+        {
+            yield return row!;
+        }
     }
 
     private static async Task CheckManagementHttpStatusCode(

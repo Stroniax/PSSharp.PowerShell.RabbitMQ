@@ -13,6 +13,7 @@ internal sealed class QueueDetailsJsonConverter : JsonConverter<QueueDetails>
     )
     {
         string? name = null;
+        string? vhost = null;
         uint messages = 0;
         DateTimeOffset? idleSince = null;
         bool autoDelete = false;
@@ -34,6 +35,9 @@ internal sealed class QueueDetailsJsonConverter : JsonConverter<QueueDetails>
             {
                 case "name":
                     name = reader.GetString();
+                    break;
+                case "vhost":
+                    vhost = reader.GetString();
                     break;
                 case "messages":
                     messages = reader.GetUInt32();
@@ -61,10 +65,17 @@ internal sealed class QueueDetailsJsonConverter : JsonConverter<QueueDetails>
                 $"Missing required property \"{nameof(QueueDetails.Name)}\" for model \"{nameof(QueueDetails)}\"."
             );
         }
+        if (vhost is null)
+        {
+            throw new JsonException(
+                $"Missing required property \"{nameof(QueueDetails.VHost)}\" for model \"{nameof(QueueDetails)}\"."
+            );
+        }
 
         return new QueueDetails
         {
             Name = name,
+            VHost = vhost,
             AdditionalProperties = props.ToImmutable(),
             AutoDelete = autoDelete,
             Consumers = consumers,

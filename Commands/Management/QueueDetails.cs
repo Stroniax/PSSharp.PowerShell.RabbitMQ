@@ -7,6 +7,8 @@ public sealed class QueueDetails
 {
     public required string Name { get; init; }
 
+    public required string VHost { get; init; }
+
     public uint Messages { get; init; }
 
     public DateTimeOffset? IdleSince { get; init; }

@@ -21,7 +21,8 @@ public sealed class ManagementServerUriCompleterAttribute
         var management = RmqManagementServer.KnownUris().Select(u => u.ToString().TrimEnd('/'));
         var client = RabbitConnectionStore
             .Current.GetConnections()
-            .Select(c => "amqp://" + c.GetConnection().Endpoint.HostName + ":15672");
+            .Select(c => c.GetConnection())
+            .Select(c => $"amqp://{c.Endpoint.HostName}:{c.Endpoint.Port}");
 
         var uris = management.Concat(client).Append("http://localhost:15672");
         return uris.Where(u =>

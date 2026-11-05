@@ -34,6 +34,7 @@ public sealed class ClearRabbitMqQueueCommand : RmqCmdlet
     public Uri? ManagementUri { get; set; }
 
     [Parameter(ParameterSetName = ManagementParameterSet)]
+    [Credential]
     [ArgumentCompletions("guest")]
     public PSCredential? Credential { get; set; }
 
