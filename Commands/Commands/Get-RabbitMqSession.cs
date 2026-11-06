@@ -2,15 +2,15 @@
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
-[Cmdlet(VerbsCommon.Get, Nouns.RabbitMqConnection, DefaultParameterSetName = NameParameterSet)]
-[OutputType(typeof(PSRabbitConnection))]
-public sealed class GetRabbitMqConnectionCommand : PSCmdlet
+[Cmdlet(VerbsCommon.Get, Nouns.RabbitMqSession, DefaultParameterSetName = NameParameterSet)]
+[OutputType(typeof(PSRabbitSession))]
+public sealed class GetRabbitMqSessionCommand : PSCmdlet
 {
     private const string InstanceParameterSet = "Instance";
     private const string NameParameterSet = "Name";
 
     [Parameter(Position = 0, ParameterSetName = NameParameterSet)]
-    [RabbitConnectionCompleter]
+    [PSRabbitSessionCompleter]
     [ValidateNotNullOrWhiteSpace]
     [SupportsWildcards]
     public string[] Name { get; set; } = [];
@@ -21,16 +21,16 @@ public sealed class GetRabbitMqConnectionCommand : PSCmdlet
         ValueFromPipelineByPropertyName = true,
         ParameterSetName = InstanceParameterSet
     )]
-    [RabbitConnectionCompleter]
+    [PSRabbitSessionCompleter]
     public Guid[] InstanceId { get; set; } = [];
 
     protected override void ProcessRecord()
     {
-        var store = RabbitConnectionStore.Current;
+        var store = PSRabbitSessionStore.Current;
 
         if (Name.Length == 0 && InstanceId.Length == 0)
         {
-            WriteObject(store.GetConnections(), true);
+            WriteObject(store.GetSessions(), true);
             return;
         }
 
@@ -45,7 +45,7 @@ public sealed class GetRabbitMqConnectionCommand : PSCmdlet
         );
         var foundNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var cx in store.GetConnections())
+        foreach (var cx in store.GetSessions())
         {
             if (ids.Remove(cx.InstanceId))
             {
@@ -61,7 +61,7 @@ public sealed class GetRabbitMqConnectionCommand : PSCmdlet
         foreach (var missing in ids)
         {
             var exn = new ItemNotFoundException(
-                "RabbitMQ connection with the specified InstanceId was not found."
+                "RabbitMQ session with the specified InstanceId was not found."
             );
             var err = new ErrorRecord(
                 exn,
@@ -71,7 +71,7 @@ public sealed class GetRabbitMqConnectionCommand : PSCmdlet
             )
             {
                 ErrorDetails = new(
-                    $"RabbitMQ connection with the specified InstanceId \"{missing}\" was not found."
+                    $"RabbitMQ session with the specified InstanceId \"{missing}\" was not found."
                 ),
             };
             WriteError(err);
@@ -81,12 +81,12 @@ public sealed class GetRabbitMqConnectionCommand : PSCmdlet
         foreach (var missing in names)
         {
             var exn = new ItemNotFoundException(
-                "RabbitMQ connection with the specified name was not found."
+                "RabbitMQ session with the specified name was not found."
             );
             var err = new ErrorRecord(exn, "NameNotFound", ErrorCategory.ObjectNotFound, missing)
             {
                 ErrorDetails = new(
-                    $"RabbitMQ connection with the specified Name \"{missing}\" was not found."
+                    $"RabbitMQ session with the specified Name \"{missing}\" was not found."
                 ),
             };
             WriteError(err);

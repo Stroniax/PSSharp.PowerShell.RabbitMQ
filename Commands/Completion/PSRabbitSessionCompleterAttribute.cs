@@ -4,7 +4,7 @@ using System.Management.Automation.Language;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
-public sealed class RabbitConnectionCompleterAttribute
+public sealed class PSRabbitSessionCompleterAttribute
     : ArgumentCompleterFactoryAttribute,
         IArgumentCompleter
 {
@@ -18,14 +18,14 @@ public sealed class RabbitConnectionCompleterAttribute
         IDictionary fakeBoundParameters
     )
     {
-        var store = RabbitConnectionStore.Current;
+        var store = PSRabbitSessionStore.Current;
         var quote = ArgumentCompletionQuote.Extract(wordToComplete, out wordToComplete);
         var pattern = WildcardPattern.Get(wordToComplete + "*", WildcardOptions.IgnoreCase);
 
         return parameterName switch
         {
             "InstanceId" => store
-                .GetConnections()
+                .GetSessions()
                 .Where(c => pattern.IsMatch(c.Name))
                 .Select(c => new CompletionResult(
                     quote.Wrap(c.InstanceId.ToString()),
@@ -34,7 +34,7 @@ public sealed class RabbitConnectionCompleterAttribute
                     $"{c.InstanceId} \"{c.Name}\""
                 )),
             _ => store
-                .GetConnections()
+                .GetSessions()
                 .Where(c => pattern.IsMatch(c.Name))
                 .Select(c => new CompletionResult(
                     quote.Wrap(c.Name),

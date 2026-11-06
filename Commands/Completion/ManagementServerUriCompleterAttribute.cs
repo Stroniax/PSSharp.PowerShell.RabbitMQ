@@ -19,8 +19,8 @@ public sealed class ManagementServerUriCompleterAttribute
         var quote = ArgumentCompletionQuote.Extract(wordToComplete, out wordToComplete);
 
         var management = RmqManagementServer.KnownUris().Select(u => u.ToString().TrimEnd('/'));
-        var client = RabbitConnectionStore
-            .Current.GetConnections()
+        var client = PSRabbitSessionStore
+            .Current.GetSessions()
             .Select(c => c.GetConnection())
             .Select(c => $"amqp://{c.Endpoint.HostName}:{c.Endpoint.Port}");
 

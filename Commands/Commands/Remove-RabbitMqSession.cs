@@ -4,11 +4,11 @@ namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 [Cmdlet(
     VerbsCommon.Remove,
-    Nouns.RabbitMqConnection,
+    Nouns.RabbitMqSession,
     DefaultParameterSetName = SessionParameterSet,
     SupportsShouldProcess = true
 )]
-public sealed class RemoveRabbitMqConnectionCommand : RmqCmdlet
+public sealed class RemoveRabbitMqSessionCommand : RmqCmdlet
 {
     public const string NameParameterSet = "Name";
     public const string SessionParameterSet = "Session";
@@ -20,9 +20,10 @@ public sealed class RemoveRabbitMqConnectionCommand : RmqCmdlet
         Position = 0,
         ValueFromPipeline = true
     )]
-    [RabbitConnection]
-    [RabbitConnectionCompleter]
-    public PSRabbitConnection? Connection { get; set; }
+    [Alias("Connection")]
+    [PSRabbitSession]
+    [PSRabbitSessionCompleter]
+    public PSRabbitSession? Session { get; set; }
 
     [Parameter(
         ParameterSetName = InstanceParameterSet,
@@ -30,25 +31,25 @@ public sealed class RemoveRabbitMqConnectionCommand : RmqCmdlet
         Position = 0,
         ValueFromPipelineByPropertyName = true
     )]
-    [RabbitConnectionCompleter]
+    [PSRabbitSessionCompleter]
     public Guid InstanceId { get; init; }
 
-    private readonly RabbitConnectionStore _store = RabbitConnectionStore.Current;
+    private readonly PSRabbitSessionStore _store = PSRabbitSessionStore.Current;
 
     protected override async Task ProcessRecordAsync()
     {
-        if (Connection is not null)
+        if (Session is not null)
         {
-            if (!_store.Remove(Connection))
+            if (!_store.Remove(Session))
             {
                 var ex = new InvalidOperationException(
-                    "The RabbitMQ connection has already been removed."
+                    "The RabbitMQ session has already been removed."
                 );
                 var er = new ErrorRecord(
                     ex,
                     "AlreadyRemoved",
                     ErrorCategory.InvalidArgument,
-                    Connection
+                    Session
                 );
                 await WriteErrorAsync(er).ConfigureAwait(false);
             }
@@ -57,14 +58,14 @@ public sealed class RemoveRabbitMqConnectionCommand : RmqCmdlet
         }
 
         var found = false;
-        foreach (var connection in _store.GetConnections())
+        foreach (var session in _store.GetSessions())
         {
-            if (connection.InstanceId == InstanceId || connection == Connection)
+            if (session.InstanceId == InstanceId || session == Session)
             {
-                if (ShouldProcess(connection.InstanceId.ToString(), "Remove RabbitMQ Connection"))
+                if (ShouldProcess(session.InstanceId.ToString(), "Remove RabbitMQ session"))
                 {
-                    await using var _context = connection.GetConnection().ConfigureAwait(false);
-                    _store.Remove(connection);
+                    await using var _context = session.GetConnection().ConfigureAwait(false);
+                    _store.Remove(session);
                     found = true;
                     break;
                 }
@@ -74,7 +75,7 @@ public sealed class RemoveRabbitMqConnectionCommand : RmqCmdlet
         if (!found)
         {
             var ex = new ItemNotFoundException(
-                "A RabbitMQ connection with the specified InstanceId does not exist."
+                "A RabbitMQ session with the specified InstanceId does not exist."
             );
             var er = new ErrorRecord(
                 ex,
@@ -84,7 +85,7 @@ public sealed class RemoveRabbitMqConnectionCommand : RmqCmdlet
             )
             {
                 ErrorDetails = new(
-                    $"A RabbitMQ connection with the specified InstanceId \"{InstanceId}\" does not exist."
+                    $"A RabbitMQ session with the specified InstanceId \"{InstanceId}\" does not exist."
                 ),
             };
             await WriteErrorAsync(er).ConfigureAwait(false);

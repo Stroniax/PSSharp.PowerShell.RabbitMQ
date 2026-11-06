@@ -46,9 +46,10 @@ public sealed class SendRabbitMqMessageCommand : RmqCmdlet
         PSRabbitMessageSerialization.Clixml;
 
     [Parameter(Mandatory = true, Position = 5, ParameterSetName = AmqpParameterSet)]
-    [RabbitConnectionCompleter]
-    [RabbitConnection]
-    public PSRabbitConnection? Connection { get; set; }
+    [Alias("Connection")]
+    [PSRabbitSessionCompleter]
+    [PSRabbitSession]
+    public PSRabbitSession? Session { get; set; }
 
     [Parameter(Mandatory = true, Position = 5, ParameterSetName = ManagementParameterSet)]
     [ManagementServerUriCompleter]
@@ -295,11 +296,11 @@ public sealed class SendRabbitMqMessageCommand : RmqCmdlet
     private async Task PublishAmqp()
     {
         Debug.Assert(
-            Connection is not null,
-            "The 'Connection' parameter is mandatory for the amqp* parameter set."
+            Session is not null,
+            "The 'Session' parameter is mandatory for the amqp* parameter set."
         );
 
-        var channel = await Connection.GetDefaultChannel(PipelineStopToken).ConfigureAwait(false);
+        var channel = await Session.GetDefaultChannel(PipelineStopToken).ConfigureAwait(false);
 
         string? contentType = null;
         byte[] body;

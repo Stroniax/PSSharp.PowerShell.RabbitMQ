@@ -45,9 +45,10 @@ public sealed class RegisterRabbitMqQueueCommand : RmqCmdlet, IDynamicParameters
     public Hashtable? Arguments { get; set; }
 
     [Parameter(Mandatory = true, ParameterSetName = AmqpParameterSet)]
-    [RabbitConnectionCompleter]
-    [RabbitConnection]
-    public PSRabbitConnection? Connection { get; set; }
+    [Alias("Connection")]
+    [PSRabbitSessionCompleter]
+    [PSRabbitSession]
+    public PSRabbitSession? Session { get; set; }
 
     [Parameter(Mandatory = true, ParameterSetName = ManagementParameterSet)]
     [ManagementServerUriCompleter]
@@ -109,11 +110,11 @@ public sealed class RegisterRabbitMqQueueCommand : RmqCmdlet, IDynamicParameters
     private async Task Amqp()
     {
         Debug.Assert(
-            Connection is not null,
-            "Parameter 'Connection' is mandatory for Amqp parameter set."
+            Session is not null,
+            "Parameter 'Session' is mandatory for Amqp parameter set."
         );
 
-        var channel = await Connection.GetDefaultChannel(PipelineStopToken);
+        var channel = await Session.GetDefaultChannel(PipelineStopToken);
 
         if (!await InvokeAsync(() => ShouldProcess(Queue, "declare queue")))
         {

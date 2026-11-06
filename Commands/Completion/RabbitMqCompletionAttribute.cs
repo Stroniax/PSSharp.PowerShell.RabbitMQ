@@ -61,22 +61,20 @@ public abstract class RabbitMqCompletionAttribute
             return parsedManagementUri.Host;
         }
         else if (
-            fakeBoundParameters.Contains("Connection")
-            && fakeBoundParameters["Connection"] is PSRabbitConnection conn
+            fakeBoundParameters.Contains("Session")
+            && fakeBoundParameters["Session"] is PSRabbitSession conn
         )
         {
             return conn.GetConnection().Endpoint.HostName;
         }
         else if (
-            fakeBoundParameters.Contains("Connection")
-            && fakeBoundParameters["Connection"] is string connectionName
+            fakeBoundParameters.Contains("Session")
+            && fakeBoundParameters["Session"] is string sessionName
         )
         {
-            return RabbitConnectionStore
-                .Current.GetConnections()
-                .FirstOrDefault(c =>
-                    c.Name.Equals(connectionName, StringComparison.OrdinalIgnoreCase)
-                )
+            return PSRabbitSessionStore
+                .Current.GetSessions()
+                .FirstOrDefault(c => c.Name.Equals(sessionName, StringComparison.OrdinalIgnoreCase))
                 ?.GetConnection()
                 .Endpoint.HostName;
         }

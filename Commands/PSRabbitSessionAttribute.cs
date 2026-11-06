@@ -3,15 +3,15 @@
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 /// <summary>
-/// Describes that a parameter ought to be a <see cref="PSRabbitConnection"/>. This attribute may provide
-/// transformation from a given name or instance id into the corresponding <see cref="PSRabbitConnection"/>
-/// via <see cref="RabbitConnectionStore"/>.
+/// Describes that a parameter ought to be a <see cref="PSRabbitSession"/>. This attribute may provide
+/// transformation from a given name or instance id into the corresponding <see cref="PSRabbitSession"/>
+/// via <see cref="PSRabbitSessionStore"/>.
 /// </summary>
-public sealed class RabbitConnectionAttribute : ArgumentTransformationAttribute
+public sealed class PSRabbitSessionAttribute : ArgumentTransformationAttribute
 {
     public override object? Transform(EngineIntrinsics engineIntrinsics, object inputData)
     {
-        var store = RabbitConnectionStore.Current;
+        var store = PSRabbitSessionStore.Current;
 
         return inputData switch
         {
@@ -21,17 +21,17 @@ public sealed class RabbitConnectionAttribute : ArgumentTransformationAttribute
         };
     }
 
-    private static object? ConvertFromInstanceId(RabbitConnectionStore store, Guid instanceId)
+    private static object? ConvertFromInstanceId(PSRabbitSessionStore store, Guid instanceId)
     {
-        var match = store.GetConnections().Where(c => c.InstanceId == instanceId).ToList();
+        var match = store.GetSessions().Where(c => c.InstanceId == instanceId).ToList();
 
         return match.Count == 1 ? match[0] : instanceId;
     }
 
-    private static object? ConvertFromName(RabbitConnectionStore store, string name)
+    private static object? ConvertFromName(PSRabbitSessionStore store, string name)
     {
         var match = store
-            .GetConnections()
+            .GetSessions()
             .Where(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
             .ToList();
 

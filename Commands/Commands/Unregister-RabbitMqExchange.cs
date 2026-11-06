@@ -27,9 +27,10 @@ public sealed class UnregisterRabbitMqExchangeCommand : RmqCmdlet
     public SwitchParameter IfUnused { get; set; }
 
     [Parameter(Mandatory = true, ParameterSetName = AmqpParameterSet)]
-    [RabbitConnection]
-    [RabbitConnectionCompleter]
-    public PSRabbitConnection? Connection { get; set; }
+    [Alias("Connection")]
+    [PSRabbitSession]
+    [PSRabbitSessionCompleter]
+    public PSRabbitSession? Session { get; set; }
 
     [Parameter(Mandatory = true, ParameterSetName = ManagementParameterSet)]
     [ManagementServerUriCompleter]
@@ -63,9 +64,9 @@ public sealed class UnregisterRabbitMqExchangeCommand : RmqCmdlet
 
     private async Task Amqp()
     {
-        Debug.Assert(Connection is not null, "Connection parameter is mandatory.");
+        Debug.Assert(Session is not null, "Session parameter is mandatory.");
 
-        var channel = await Connection.GetDefaultChannel(PipelineStopToken);
+        var channel = await Session.GetDefaultChannel(PipelineStopToken);
 
         if (!await InvokeAsync(() => ShouldProcess(Exchange, "delete exchange")))
         {

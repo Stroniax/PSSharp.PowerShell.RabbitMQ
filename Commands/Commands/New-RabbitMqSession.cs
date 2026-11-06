@@ -8,13 +8,13 @@ namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 [Cmdlet(
     VerbsCommon.New,
-    Nouns.RabbitMqConnection,
+    Nouns.RabbitMqSession,
     ConfirmImpact = ConfirmImpact.Low,
     DefaultParameterSetName = UriParameterSet,
     RemotingCapability = RemotingCapability.OwnedByCommand,
     SupportsShouldProcess = true
 )]
-public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
+public sealed class NewRabbitMqSessionCommand : RmqCmdlet
 {
     public const string UriParameterSet = "Uri";
     public const string ArgsParameterSet = "Arg";
@@ -37,6 +37,7 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
         Position = 0,
         ValueFromPipeline = true
     )]
+    [Alias("ConnectionFactory")]
     [ArgumentCompletions("$")]
     public ConnectionFactory? Factory { get; set; }
 
@@ -87,10 +88,10 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
     /// </summary>
     [Parameter]
     [ValidateNotNullOrWhiteSpace]
-    [ConnectionNameFromHostNameArgumentCompleter]
+    [DerivedSessionNameArgumentCompleter]
     public string? Name { get; set; }
 
-    private readonly RabbitConnectionStore _store = RabbitConnectionStore.Current;
+    private readonly PSRabbitSessionStore _store = PSRabbitSessionStore.Current;
 
     protected override async Task ProcessRecordAsync()
     {
@@ -128,7 +129,7 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
     {
         var isAutoName = Name is null;
         name ??= Name;
-        var autoMessage = " The name was auto-generated from the host name of the connection.";
+        var autoMessage = " The name was auto-generated from the host name of the session.";
 
         var ex = new InvalidOperationException(
             $"The name (alias) is associated with an existing RabbitMQ session.{autoMessage}"
@@ -140,7 +141,7 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
             )
             {
                 RecommendedAction =
-                    "Specify a different name using the \"-Name\" parameter, or remove the existing RabbitMQ connection using \"Remove-RabbitMqConnection\".",
+                    "Specify a different name using the \"-Name\" parameter, or remove the existing RabbitMQ session using \"Remove-RabbitMqSession\".",
             },
         };
         await WriteErrorAsync(er);
@@ -157,7 +158,7 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
         {
             Factory.ClientProvidedName ??= ClientProvidedName;
         }
-        await CreateConnection(Factory);
+        await CreateSession(Factory);
     }
 
     private async Task ConnectUsingArgs()
@@ -176,7 +177,7 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
             Port = Port,
             VirtualHost = VirtualHost,
         };
-        await CreateConnection(factory);
+        await CreateSession(factory);
     }
 
     private async Task ConnectUsingUri()
@@ -187,10 +188,10 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
             factory.UserName = Credential.UserName;
             factory.Password = Credential.GetNetworkCredential().Password;
         }
-        await CreateConnection(factory);
+        await CreateSession(factory);
     }
 
-    private async Task CreateConnection(ConnectionFactory factory)
+    private async Task CreateSession(ConnectionFactory factory)
     {
         var name = Name ?? factory.HostName;
         if (_store.HasSessionWithName(name))
@@ -224,7 +225,7 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
             await ProgressCompleted().ConfigureAwait(false);
         }
 
-        var session = new PSRabbitConnection(connection) { Name = name };
+        var session = new PSRabbitSession(connection) { Name = name };
         _store.Add(session);
         await WriteObjectAsync(session).ConfigureAwait(false);
     }
@@ -255,7 +256,7 @@ public sealed class NewRabbitMqConnectionCommand : RmqCmdlet
     }
 }
 
-file sealed class ConnectionNameFromHostNameArgumentCompleterAttribute
+file sealed class DerivedSessionNameArgumentCompleterAttribute
     : ArgumentCompleterFactoryAttribute,
         IArgumentCompleter
 {

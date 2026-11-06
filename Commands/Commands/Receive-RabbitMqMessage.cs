@@ -127,9 +127,10 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
     [Parameter(Mandatory = true, ParameterSetName = ConsumeParameterSet)]
     [Parameter(Mandatory = true, ParameterSetName = GetParameterSet)]
     [Parameter(Mandatory = true, ParameterSetName = PeekParameterSet)]
-    [RabbitConnectionCompleter]
-    [RabbitConnection]
-    public PSRabbitConnection? Connection { get; set; }
+    [Alias("Connection")]
+    [PSRabbitSessionCompleter]
+    [PSRabbitSession]
+    public PSRabbitSession? Session { get; set; }
 
     [Parameter(Mandatory = true, ParameterSetName = ManagementParameterSet)]
     [ManagementServerUriCompleter]
@@ -193,11 +194,11 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
     private async Task Get()
     {
         Debug.Assert(
-            Connection is not null,
-            "Mandatory parameter 'Connection' for 'Get' or 'Peek' parameter set cannot be null."
+            Session is not null,
+            "Mandatory parameter 'Session' for 'Get' or 'Peek' parameter set cannot be null."
         );
 
-        var channel = await Connection.GetDefaultChannel(PipelineStopToken).ConfigureAwait(false);
+        var channel = await Session.GetDefaultChannel(PipelineStopToken).ConfigureAwait(false);
 
         var autoAck = !ManualAck.IsPresent && !Peek.IsPresent;
         var message = await channel.BasicGetAsync(Queue, autoAck, PipelineStopToken);
@@ -271,12 +272,12 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
     private async Task Job()
     {
         Debug.Assert(
-            Connection is not null,
-            "Mandatory parameter 'Connection' for 'Consume' parameter set cannot be null."
+            Session is not null,
+            "Mandatory parameter 'Session' for 'Consume' parameter set cannot be null."
         );
         // The job owns the channel, so create a new one for it.
         // This also prevents any error in the job from breaking other users of the DefaultChannel.
-        var channel = await Connection
+        var channel = await Session
             .GetConnection()
             .CreateChannelAsync(null, PipelineStopToken)
             .ConfigureAwait(false);

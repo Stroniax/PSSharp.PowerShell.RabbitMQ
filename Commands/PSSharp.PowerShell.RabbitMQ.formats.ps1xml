@@ -4,7 +4,7 @@
         <View>
             <Name>Default</Name>
             <ViewSelectedBy>
-                <TypeName>PSSharp.PowerShell.RabbitMQ.Commands.PSRabbitConnection</TypeName>
+                <TypeName>PSSharp.PowerShell.RabbitMQ.Commands.PSRabbitSession</TypeName>
             </ViewSelectedBy>
             <TableControl>
                 <TableHeaders>

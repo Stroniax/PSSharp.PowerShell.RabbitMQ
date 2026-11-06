@@ -1,36 +1,35 @@
 ﻿using System.Collections.Concurrent;
-using System.Management.Automation;
 using System.Management.Automation.Runspaces;
 using System.Runtime.CompilerServices;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
 /// <summary>
-/// A wrapper over a specific variable in the <paramref name="variables"/> store that is used
-/// to store RabbitMQ sessions.
+/// A wrapper over a specific collection of <see cref="PSRabbitSession"/>s associated with
+/// a <see cref="Runspace"/>.
 /// </summary>
 /// <param name="variables"></param>
-public sealed class RabbitConnectionStore
+public sealed class PSRabbitSessionStore
 {
-    private static readonly ConditionalWeakTable<Runspace, RabbitConnectionStore> _stores = [];
+    private static readonly ConditionalWeakTable<Runspace, PSRabbitSessionStore> _stores = [];
 
-    private readonly ConcurrentDictionary<Guid, PSRabbitConnection> _store = [];
+    private readonly ConcurrentDictionary<Guid, PSRabbitSession> _store = [];
 
     /// <summary>
     /// Todo: use <c>AsyncLocal</c> in some way so that this works across async contexts.
     /// </summary>
-    internal static RabbitConnectionStore Current =>
+    internal static PSRabbitSessionStore Current =>
         _stores.GetOrAdd(
             Runspace.DefaultRunspace ?? throw new Exception("No default runspace"),
             static _ => new()
         );
 
-    public IEnumerable<PSRabbitConnection> GetConnections()
+    public IEnumerable<PSRabbitSession> GetSessions()
     {
         return _store.Values.AsEnumerable();
     }
 
-    public void Add(PSRabbitConnection session)
+    public void Add(PSRabbitSession session)
     {
         if (HasSessionWithName(session.Name))
         {
@@ -47,7 +46,7 @@ public sealed class RabbitConnectionStore
         }
     }
 
-    public bool Remove(PSRabbitConnection session)
+    public bool Remove(PSRabbitSession session)
     {
         return _store.TryRemove(session.InstanceId, out _);
     }

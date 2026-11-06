@@ -4,7 +4,7 @@ using RabbitMQ.Client.Events;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
-public sealed class PSRabbitConnection(IConnection connection)
+public sealed class PSRabbitSession(IConnection connection)
 {
     private readonly IConnection _connection = connection;
     private IChannel? _defaultChannel;
