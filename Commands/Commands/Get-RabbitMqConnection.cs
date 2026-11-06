@@ -3,7 +3,12 @@ using PSSharp.PowerShell.RabbitMQ.Commands.Management;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
-[Cmdlet(VerbsCommon.Get, Nouns.RabbitMqConnection, DefaultParameterSetName = VhostParameterSet)]
+[Cmdlet(
+    VerbsCommon.Get,
+    Nouns.RabbitMqConnection,
+    DefaultParameterSetName = VhostParameterSet,
+    RemotingCapability = RemotingCapability.OwnedByCommand
+)]
 [OutputType(
     typeof(ConnectionDetails),
     ParameterSetName = [VhostParameterSet, AllVhostsParameterSet]
@@ -15,7 +20,7 @@ public sealed class GetRabbitMqConnectionCommand : RmqCmdlet
     private const string AllVhostsParameterSet = "AllVirtualHosts";
     private const string UserParameterSet = "User";
 
-    [Parameter(ValueFromPipelineByPropertyName = true, Position = 0)]
+    [Parameter(ValueFromPipelineByPropertyName = true, ValueFromPipeline = true, Position = 0)]
     [ArgumentCompletions("'127.0.0.1:5459 -> 127.0.0.1:5672'")]
     [SupportsWildcards]
     public string[] Name { get; set; } = [];
