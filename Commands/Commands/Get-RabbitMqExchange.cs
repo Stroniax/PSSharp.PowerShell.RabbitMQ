@@ -42,6 +42,7 @@ public sealed class GetRabbitMqExchangeCommand : RmqCmdlet
     public string VHost { get; set; } = "/";
 
     [Parameter(ParameterSetName = AllVhostsParameterSet)]
+    [Alias("AllVHosts")]
     public SwitchParameter AllVirtualHosts { get; set; }
 
     protected override async Task ProcessRecordAsync()

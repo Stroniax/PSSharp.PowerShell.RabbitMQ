@@ -43,6 +43,7 @@ public sealed class GetRabbitMqQueueCommand : RmqCmdlet
     public string VHost { get; set; } = "/";
 
     [Parameter(ParameterSetName = AllVhostsParameterSet)]
+    [Alias("AllVHosts")]
     public SwitchParameter AllVirtualHosts { get; set; }
 
     protected override async Task ProcessRecordAsync()
@@ -111,11 +112,7 @@ public sealed class GetRabbitMqQueueCommand : RmqCmdlet
 
         if (!found && wc is null && Queue is not null)
         {
-            var er = Assert.ItemNotFound(
-                "Queue",
-                Queue,
-                suffix: $" matching the provided criteria"
-            );
+            var er = Assert.ItemNotFound("Queue", Queue, suffix: " matching the provided criteria");
             await WriteErrorAsync(er);
         }
     }

@@ -65,4 +65,27 @@
             </AliasProperty>
         </Members>
     </Type>
+    <Type>
+        <Name>PSSharp.PowerShell.RabbitMQ.Commands.Management.UserConnectionDetails</Name>
+        <Members>
+            <AliasProperty>
+                <Name>ConnectionName</Name>
+                <ReferencedMemberName>Name</ReferencedMemberName>
+            </AliasProperty>
+            <MemberSet>
+                <Name>PSStandardMembers</Name>
+                <Members>
+                    <PropertySet>
+                        <Name>DefaultDisplayPropertySet</Name>
+                        <ReferencedProperties>
+                            <Name>ConnectionName</Name>
+                            <Name>Node</Name>
+                            <Name>User</Name>
+                            <Name>VHost</Name>
+                        </ReferencedProperties>
+                    </PropertySet>
+                </Members>
+            </MemberSet>
+        </Members>
+    </Type>
 </Types>

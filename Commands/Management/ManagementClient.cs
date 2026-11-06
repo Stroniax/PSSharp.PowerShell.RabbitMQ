@@ -1,9 +1,12 @@
-﻿using System.Net;
+﻿using System.Diagnostics;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Security.Authentication;
 using System.Text;
+using System.Text.Json.Serialization.Metadata;
+using System.Xml.Linq;
 using RabbitMQ.Client;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands.Management;
@@ -354,6 +357,146 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
         {
             yield return row!;
         }
+    }
+
+    public async Task<ConnectionDetails?> GetConnection(
+        string name,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        var namePart = Uri.EscapeDataString(name);
+        using var response = await _http.GetAsync(
+            $"/api/connections/{namePart}",
+            cancellationToken
+        );
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+        var content = await response.Content.ReadFromJsonAsync(
+            ManagementApiJsonContext.Default.ConnectionDetails,
+            cancellationToken
+        );
+        return content!;
+    }
+
+    public async IAsyncEnumerable<ConnectionDetails> ListConnections(
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        await foreach (
+            var row in ListConnectionsAtUri(
+                "/api/connections",
+                ManagementApiJsonContext.Default.ConnectionDetails,
+                cancellationToken
+            )
+        )
+        {
+            yield return row;
+        }
+    }
+
+    public async IAsyncEnumerable<ConnectionDetails> ListConnectionsByVhost(
+        string vhost,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        var vhostPart = Uri.EscapeDataString(vhost);
+        await foreach (
+            var row in ListConnectionsAtUri(
+                $"/api/vhosts/{vhostPart}/connections",
+                ManagementApiJsonContext.Default.ConnectionDetails,
+                cancellationToken
+            )
+        )
+        {
+            yield return row;
+        }
+    }
+
+    public async IAsyncEnumerable<UserConnectionDetails> ListConnectionsByUser(
+        string user,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(user);
+        var userPart = Uri.EscapeDataString(user);
+        await foreach (
+            var row in ListConnectionsAtUri(
+                $"/api/connections/username/{userPart}",
+                ManagementApiJsonContext.Default.UserConnectionDetails,
+                cancellationToken
+            )
+        )
+        {
+            yield return row;
+        }
+    }
+
+    [StackTraceHidden]
+    private async IAsyncEnumerable<T> ListConnectionsAtUri<T>(
+        string uri,
+        JsonTypeInfo<T> json,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+        where T : UserConnectionDetails
+    {
+        using var response = await _http.GetAsync(uri, cancellationToken);
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+        await foreach (
+            var row in response.Content.ReadFromJsonAsAsyncEnumerable(json, cancellationToken)
+        )
+        {
+            yield return row!;
+        }
+    }
+
+    public async Task DeleteConnectionsByUser(
+        string user,
+        string? reason,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(user);
+        var userPart = Uri.EscapeDataString(user);
+        using var request = new HttpRequestMessage(
+            HttpMethod.Delete,
+            $"/api/connections/username{userPart}"
+        );
+        if (reason is not null)
+        {
+            request.Headers.Add("X-Reason", reason);
+        }
+        using var response = await _http.SendAsync(request, cancellationToken);
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+    }
+
+    public async Task<bool> DeleteConnection(
+        string name,
+        string? reason,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        var namePart = Uri.EscapeDataString(name);
+        using var request = new HttpRequestMessage(
+            HttpMethod.Delete,
+            $"/api/connections/{namePart}"
+        );
+        if (reason is not null)
+        {
+            request.Headers.Add("X-Reason", reason);
+        }
+        using var response = await _http.SendAsync(request, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return false;
+        }
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+        return true;
     }
 
     private static async Task CheckManagementHttpStatusCode(
