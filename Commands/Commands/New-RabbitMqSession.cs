@@ -48,7 +48,7 @@ public sealed class NewRabbitMqSessionCommand : RmqCmdlet
         ValueFromPipelineByPropertyName = true
     )]
     [ArgumentCompletions("localhost")]
-    public string? Hostname { get; set; }
+    public string? HostName { get; set; }
 
     [Parameter(
         ParameterSetName = ArgsParameterSet,
@@ -91,6 +91,10 @@ public sealed class NewRabbitMqSessionCommand : RmqCmdlet
     [DerivedSessionNameArgumentCompleter]
     public string? Name { get; set; }
 
+    [Parameter(ParameterSetName = ArgsParameterSet)]
+    [Parameter(ParameterSetName = UriParameterSet)]
+    public SwitchParameter DisableAutoRecovery { get; set; }
+
     private readonly PSRabbitSessionStore _store = PSRabbitSessionStore.Current;
 
     protected override async Task ProcessRecordAsync()
@@ -120,9 +124,10 @@ public sealed class NewRabbitMqSessionCommand : RmqCmdlet
 
     private async Task WriteErrorNameExists(string? name = null)
     {
-        var isAutoName = Name is null;
+        var autoMessage = Name is null
+            ? " The name was auto-generated from the host name of the session."
+            : string.Empty;
         name ??= Name;
-        var autoMessage = " The name was auto-generated from the host name of the session.";
 
         var ex = new InvalidOperationException(
             $"The name (alias) is associated with an existing RabbitMQ session.{autoMessage}"
@@ -153,9 +158,11 @@ public sealed class NewRabbitMqSessionCommand : RmqCmdlet
 
     private async Task ConnectUsingArgs()
     {
+        Assert.MandatoryParameter(HostName, ArgsParameterSet);
+
         var factory = new ConnectionFactory()
         {
-            HostName = Hostname!,
+            HostName = HostName,
             ClientProvidedName = ClientProvidedName,
             UserName = Credential?.UserName ?? "guest",
             Password = Credential?.GetNetworkCredential().Password ?? "guest",
@@ -166,13 +173,21 @@ public sealed class NewRabbitMqSessionCommand : RmqCmdlet
                 ?? [],
             Port = Port,
             VirtualHost = VirtualHost,
+            AutomaticRecoveryEnabled = !DisableAutoRecovery.IsPresent,
         };
         await CreateSession(factory);
     }
 
     private async Task ConnectUsingUri()
     {
-        var factory = new ConnectionFactory { Uri = Uri!, ClientProvidedName = ClientProvidedName };
+        Assert.MandatoryParameter(Uri, UriParameterSet);
+
+        var factory = new ConnectionFactory
+        {
+            Uri = Uri,
+            ClientProvidedName = ClientProvidedName,
+            AutomaticRecoveryEnabled = !DisableAutoRecovery.IsPresent,
+        };
         if (Credential is not null)
         {
             factory.UserName = Credential.UserName;
