@@ -187,15 +187,16 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
                 await Management();
                 break;
             default:
-                throw new UnreachableException("Is the parameter set implemented?");
+                Assert.ParameterSetExhausted(ParameterSetName);
+                break;
         }
     }
 
     private async Task Get()
     {
-        Debug.Assert(
-            Session is not null,
-            "Mandatory parameter 'Session' for 'Get' or 'Peek' parameter set cannot be null."
+        Assert.MandatoryParameter(
+            Session,
+            GetParameterSet + "," + PeekParameterSet + "," + ConsumeParameterSet
         );
 
         var channel = await Session.GetDefaultChannel(PipelineStopToken).ConfigureAwait(false);
@@ -271,10 +272,8 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
 
     private async Task Job()
     {
-        Debug.Assert(
-            Session is not null,
-            "Mandatory parameter 'Session' for 'Consume' parameter set cannot be null."
-        );
+        Assert.MandatoryParameter(Session, ConsumeParameterSet);
+
         // The job owns the channel, so create a new one for it.
         // This also prevents any error in the job from breaking other users of the DefaultChannel.
         var channel = await Session
@@ -299,10 +298,7 @@ public sealed class ReceiveRabbitMqMessageCommand : RmqCmdlet
 
     private async Task Management()
     {
-        Debug.Assert(
-            ManagementUri is not null,
-            "Mandatory parameter 'ManagementUri' for 'Management' parameter set cannot be null."
-        );
+        Assert.MandatoryParameter(ManagementUri, ManagementParameterSet);
 
         var cred = Credential?.GetNetworkCredential() ?? ManagementUri.GetNetworkCredential();
         var uri = ManagementUri.WithoutCredential();

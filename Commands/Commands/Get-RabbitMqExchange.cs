@@ -76,13 +76,12 @@ public sealed class GetRabbitMqExchangeCommand : RmqCmdlet
             var exch = await client.GetExchange(VHost, name, PipelineStopToken);
             if (exch is null)
             {
-                var ex = new ItemNotFoundException("The exchange does not exist.");
-                var er = new ErrorRecord(ex, "ExchangeNotFound", ErrorCategory.ObjectNotFound, exch)
-                {
-                    ErrorDetails = new(
-                        $"No exchange named \"{name}\" exists on virtual host \"{VHost}\"."
-                    ),
-                };
+                var er = Assert.ItemNotFound(
+                    "Exchange",
+                    exch,
+                    nameof(ExchangeDetails.Name),
+                    $" on virtual host \"{VHost}\""
+                );
                 await WriteErrorAsync(er);
             }
             else
@@ -131,13 +130,12 @@ public sealed class GetRabbitMqExchangeCommand : RmqCmdlet
                 continue;
             }
 
-            var ex = new ItemNotFoundException("The exchange does not exist.");
-            var er = new ErrorRecord(ex, "ExchangeNotFound", ErrorCategory.ObjectNotFound, name)
-            {
-                ErrorDetails = new(
-                    $"No exchange named \"{name}\" was found matching the provided criteria."
-                ),
-            };
+            var er = Assert.ItemNotFound(
+                "Exchange",
+                name,
+                nameof(ExchangeDetails.Name),
+                " matching the provided criteria"
+            );
             await WriteErrorAsync(er);
         }
     }

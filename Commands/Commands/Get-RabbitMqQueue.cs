@@ -47,10 +47,7 @@ public sealed class GetRabbitMqQueueCommand : RmqCmdlet
 
     protected override async Task ProcessRecordAsync()
     {
-        Debug.Assert(
-            ManagementUri is not null,
-            "ManagementUri is a mandatory parameter and must not be null."
-        );
+        Assert.MandatoryParameter(ManagementUri, "all");
 
         var cred = Credential?.GetNetworkCredential() ?? ManagementUri.GetNetworkCredential();
 
@@ -77,11 +74,12 @@ public sealed class GetRabbitMqQueueCommand : RmqCmdlet
             catch (HttpRequestException httpex)
                 when (httpex.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
-                var ex = new ItemNotFoundException("The queue does not exist.", httpex);
-                var er = new ErrorRecord(ex, "QueueNotFound", ErrorCategory.ObjectNotFound, Queue)
-                {
-                    ErrorDetails = new($"No queue named \"{Queue}\" exists on VHost \"{vhost}\"."),
-                };
+                var er = Assert.ItemNotFound(
+                    "Queue",
+                    Queue,
+                    suffix: $" on virtual host \"{vhost}\".",
+                    innerException: httpex
+                );
                 await WriteErrorAsync(er);
             }
             return;
@@ -113,13 +111,11 @@ public sealed class GetRabbitMqQueueCommand : RmqCmdlet
 
         if (!found && wc is null && Queue is not null)
         {
-            var ex = new ItemNotFoundException("The queue does not exist.");
-            var er = new ErrorRecord(ex, "QueueNotFound", ErrorCategory.ObjectNotFound, Queue)
-            {
-                ErrorDetails = new(
-                    $"No queue named \"{Queue}\" was found matching the provided criteria."
-                ),
-            };
+            var er = Assert.ItemNotFound(
+                "Queue",
+                Queue,
+                suffix: $" matching the provided criteria"
+            );
             await WriteErrorAsync(er);
         }
     }

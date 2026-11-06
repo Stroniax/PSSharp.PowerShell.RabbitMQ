@@ -21,7 +21,7 @@ public sealed class SendRabbitMqAckCommand : RmqCmdlet
 
     protected override async Task ProcessRecordAsync()
     {
-        Debug.Assert(Message is not null, "A value must be assigned to the mandatory parameter.");
+        Assert.MandatoryParameter(Message, "all");
 
         if (Message is not IInFlightMessage inFlight)
         {

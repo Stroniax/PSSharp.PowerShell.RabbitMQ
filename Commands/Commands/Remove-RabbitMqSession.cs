@@ -74,20 +74,7 @@ public sealed class RemoveRabbitMqSessionCommand : RmqCmdlet
 
         if (!found)
         {
-            var ex = new ItemNotFoundException(
-                "A RabbitMQ session with the specified InstanceId does not exist."
-            );
-            var er = new ErrorRecord(
-                ex,
-                "InstanceIdNotFound",
-                ErrorCategory.ObjectNotFound,
-                InstanceId
-            )
-            {
-                ErrorDetails = new(
-                    $"A RabbitMQ session with the specified InstanceId \"{InstanceId}\" does not exist."
-                ),
-            };
+            var er = Assert.ItemNotFound("RabbitMQ session", InstanceId);
             await WriteErrorAsync(er).ConfigureAwait(false);
         }
     }

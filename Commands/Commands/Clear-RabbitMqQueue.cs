@@ -55,13 +55,14 @@ public sealed class ClearRabbitMqQueueCommand : RmqCmdlet
                 await Management();
                 return;
             default:
-                throw new UnreachableException();
+                Assert.ParameterSetExhausted(ParameterSetName);
+                return;
         }
     }
 
     private async Task Amqp()
     {
-        Debug.Assert(Session is not null, "Session is mandatory for Amqp parameter set.");
+        Assert.MandatoryParameter(Session, AmqpParameterSet);
 
         var channel = await Session.GetDefaultChannel(PipelineStopToken);
 
@@ -75,10 +76,7 @@ public sealed class ClearRabbitMqQueueCommand : RmqCmdlet
 
     private async Task Management()
     {
-        Debug.Assert(
-            ManagementUri is not null,
-            "ManagementUri is mandatory for Management parameter set."
-        );
+        Assert.MandatoryParameter(ManagementUri, ManagementParameterSet);
 
         var cred = Credential?.GetNetworkCredential() ?? ManagementUri.GetNetworkCredential();
 

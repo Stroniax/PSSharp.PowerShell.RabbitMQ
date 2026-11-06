@@ -27,7 +27,7 @@ public sealed class RegisterRabbitMqManagementServerCommand : RmqCmdlet
 
     protected override async Task ProcessRecordAsync()
     {
-        Debug.Assert(ManagementUri is not null, "Mandatory parameter 'Uri' cannot be null.");
+        Assert.MandatoryParameter(ManagementUri, UriParameterSet);
 
         using var client = new HttpClient();
 

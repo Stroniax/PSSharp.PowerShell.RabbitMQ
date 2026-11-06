@@ -60,36 +60,15 @@ public sealed class GetRabbitMqSessionCommand : PSCmdlet
 
         foreach (var missing in ids)
         {
-            var exn = new ItemNotFoundException(
-                "RabbitMQ session with the specified InstanceId was not found."
-            );
-            var err = new ErrorRecord(
-                exn,
-                "InstanceIdNotFound",
-                ErrorCategory.ObjectNotFound,
-                missing
-            )
-            {
-                ErrorDetails = new(
-                    $"RabbitMQ session with the specified InstanceId \"{missing}\" was not found."
-                ),
-            };
-            WriteError(err);
+            var er = Assert.ItemNotFound("RabbitMQ session", InstanceId);
+            WriteError(er);
         }
 
         names.ExceptWith(foundNames);
         foreach (var missing in names)
         {
-            var exn = new ItemNotFoundException(
-                "RabbitMQ session with the specified name was not found."
-            );
-            var err = new ErrorRecord(exn, "NameNotFound", ErrorCategory.ObjectNotFound, missing)
-            {
-                ErrorDetails = new(
-                    $"RabbitMQ session with the specified Name \"{missing}\" was not found."
-                ),
-            };
-            WriteError(err);
+            var er = Assert.ItemNotFound("RabbitMQ session", missing, nameof(PSRabbitSession.Name));
+            WriteError(er);
         }
     }
 }

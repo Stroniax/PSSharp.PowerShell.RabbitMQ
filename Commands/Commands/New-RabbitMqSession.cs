@@ -113,14 +113,7 @@ public sealed class NewRabbitMqSessionCommand : RmqCmdlet
                 await ConnectUsingFactory();
                 break;
             default:
-                await WriteErrorAsync(
-                    new ErrorRecord(
-                        new UnreachableException("The parameter set is not implemented."),
-                        "ParameterSetNotImplemented",
-                        ErrorCategory.NotSpecified,
-                        ParameterSetName
-                    )
-                );
+                Assert.ParameterSetExhausted(ParameterSetName);
                 break;
         }
     }
@@ -149,10 +142,7 @@ public sealed class NewRabbitMqSessionCommand : RmqCmdlet
 
     private async Task ConnectUsingFactory()
     {
-        Debug.Assert(
-            Factory is not null,
-            "The parameter set that leads to ConnectUsingFactory to be called requires that the Factory is provided and not null."
-        );
+        Assert.MandatoryParameter(Factory, FactoryParameterSet);
 
         if (MyInvocation.BoundParameters.ContainsKey(nameof(ClientProvidedName)))
         {

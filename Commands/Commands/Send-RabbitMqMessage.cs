@@ -194,10 +194,7 @@ public sealed class SendRabbitMqMessageCommand : RmqCmdlet
 
     private async Task PublishManagement()
     {
-        Debug.Assert(
-            ManagementUri is not null,
-            "The 'ManagementUri' parameter is mandatory for the management* parameter set."
-        );
+        Assert.MandatoryParameter(ManagementUri, ManagementParameterSet);
 
         var cred = Credential?.GetNetworkCredential() ?? ManagementUri.GetNetworkCredential();
         var uri = ManagementUri.WithoutCredential();
@@ -295,10 +292,7 @@ public sealed class SendRabbitMqMessageCommand : RmqCmdlet
 
     private async Task PublishAmqp()
     {
-        Debug.Assert(
-            Session is not null,
-            "The 'Session' parameter is mandatory for the amqp* parameter set."
-        );
+        Assert.MandatoryParameter(Session, AmqpParameterSet);
 
         var channel = await Session.GetDefaultChannel(PipelineStopToken).ConfigureAwait(false);
 

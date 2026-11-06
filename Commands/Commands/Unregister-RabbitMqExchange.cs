@@ -58,13 +58,14 @@ public sealed class UnregisterRabbitMqExchangeCommand : RmqCmdlet
                 await Management();
                 break;
             default:
-                throw new UnreachableException("Parameter set is not implemented.");
+                Assert.ParameterSetExhausted(ParameterSetName);
+                break;
         }
     }
 
     private async Task Amqp()
     {
-        Debug.Assert(Session is not null, "Session parameter is mandatory.");
+        Assert.MandatoryParameter(Session, AmqpParameterSet);
 
         var channel = await Session.GetDefaultChannel(PipelineStopToken);
 
@@ -88,7 +89,7 @@ public sealed class UnregisterRabbitMqExchangeCommand : RmqCmdlet
 
     private async Task Management()
     {
-        Debug.Assert(ManagementUri is not null, "ManagementUri parameter is mandatory.");
+        Assert.MandatoryParameter(ManagementUri, ManagementParameterSet);
 
         var cred = Credential?.GetNetworkCredential() ?? ManagementUri.GetNetworkCredential();
         if (cred is null)

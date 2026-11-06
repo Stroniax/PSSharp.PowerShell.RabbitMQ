@@ -11,7 +11,7 @@ public sealed class RemoveRabbitMqManagementServer : Cmdlet
 
     protected override void ProcessRecord()
     {
-        Debug.Assert(ManagementServer is not null);
+        Assert.MandatoryParameter(ManagementServer, "all");
 
         if (!RmqManagementServer.Remove(ManagementServer.Uri))
         {

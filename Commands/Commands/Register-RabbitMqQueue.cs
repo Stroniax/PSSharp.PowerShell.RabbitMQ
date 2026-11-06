@@ -103,16 +103,14 @@ public sealed class RegisterRabbitMqQueueCommand : RmqCmdlet, IDynamicParameters
                 await Management();
                 break;
             default:
-                throw new UnreachableException("Parameter set is not implemented.");
+                Assert.ParameterSetExhausted(ParameterSetName);
+                break;
         }
     }
 
     private async Task Amqp()
     {
-        Debug.Assert(
-            Session is not null,
-            "Parameter 'Session' is mandatory for Amqp parameter set."
-        );
+        Assert.MandatoryParameter(Session, AmqpParameterSet);
 
         var channel = await Session.GetDefaultChannel(PipelineStopToken);
 
@@ -172,10 +170,7 @@ public sealed class RegisterRabbitMqQueueCommand : RmqCmdlet, IDynamicParameters
 
     private async Task Management()
     {
-        Debug.Assert(
-            ManagementUri is not null,
-            "Parameter 'ManagementUri' is mandatory for Management parameter set."
-        );
+        Assert.MandatoryParameter(ManagementUri, ManagementParameterSet);
 
         var cred = Credential?.GetNetworkCredential() ?? ManagementUri.GetNetworkCredential();
         if (cred is null)
