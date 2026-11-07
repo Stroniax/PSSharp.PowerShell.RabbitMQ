@@ -260,6 +260,30 @@ public record PSRabbitMessage
         [MaybeNullWhen(true)] out ErrorRecord error
     )
     {
+        try
+        {
+            return ParseCore(serialization, body, out parsedBody, out error);
+        }
+        catch (Exception ex)
+        {
+            parsedBody = null;
+            error = new ErrorRecord(
+                ex,
+                "MesssagePayloadDeserializationError",
+                ErrorCategory.InvalidData,
+                null
+            );
+            return false;
+        }
+    }
+
+    private static bool ParseCore(
+        PSRabbitMessageSerialization serialization,
+        ReadOnlyMemory<byte> body,
+        out PSObject? parsedBody,
+        [MaybeNullWhen(true)] out ErrorRecord error
+    )
+    {
         error = default;
         switch (serialization)
         {
