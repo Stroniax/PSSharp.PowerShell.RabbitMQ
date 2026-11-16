@@ -4,7 +4,7 @@ using RabbitMQ.Client.Events;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands;
 
-public sealed class PSRabbitSession(IConnection connection)
+public sealed class PSRabbitSession(IConnection connection) : IAsyncDisposable, IDisposable
 {
     private readonly IConnection _connection = connection;
     private IChannel? _defaultChannel;
@@ -66,5 +66,15 @@ public sealed class PSRabbitSession(IConnection connection)
     public IConnection GetConnection()
     {
         return _connection;
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        return _connection.DisposeAsync();
+    }
+
+    public void Dispose()
+    {
+        _connection.Dispose();
     }
 }

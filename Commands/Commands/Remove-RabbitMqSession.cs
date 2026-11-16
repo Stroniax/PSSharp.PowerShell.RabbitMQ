@@ -54,6 +54,7 @@ public sealed class RemoveRabbitMqSessionCommand : RmqCmdlet
                 await WriteErrorAsync(er).ConfigureAwait(false);
             }
 
+            await Session.DisposeAsync();
             return;
         }
 
@@ -64,7 +65,7 @@ public sealed class RemoveRabbitMqSessionCommand : RmqCmdlet
             {
                 if (ShouldProcess(session.InstanceId.ToString(), "Remove RabbitMQ session"))
                 {
-                    await using var _context = session.GetConnection().ConfigureAwait(false);
+                    await using var _context = session;
                     _store.Remove(session);
                     found = true;
                     break;
