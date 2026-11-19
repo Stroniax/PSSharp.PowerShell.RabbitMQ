@@ -143,5 +143,45 @@
                 </TableRowEntries>
             </TableControl>
         </View>
+        <View>
+            <Name>Default</Name>
+            <ViewSelectedBy>
+                <TypeName>PSSharp.PowerShell.RabbitMQ.Commands.Management.Binding</TypeName>
+            </ViewSelectedBy>
+            <TableControl>
+                <TableHeaders>
+                    <TableColumnHeader />
+                    <TableColumnHeader />
+                    <TableColumnHeader />
+                    <TableColumnHeader />
+                    <TableColumnHeader />
+                    <TableColumnHeader />
+                </TableHeaders>
+                <TableRowEntries>
+                    <TableRowEntry>
+                        <TableColumnItems>
+                            <TableColumnItem>
+                                <PropertyName>VHost</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>Source</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>Destination</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>DestinationType</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>RoutingKey</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>Arguments</PropertyName>
+                            </TableColumnItem>
+                        </TableColumnItems>
+                    </TableRowEntry>
+                </TableRowEntries>
+            </TableControl>
+        </View>
     </ViewDefinitions>
 </Configuration>

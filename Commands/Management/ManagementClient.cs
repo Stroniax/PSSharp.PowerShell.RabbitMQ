@@ -6,7 +6,6 @@ using System.Runtime.CompilerServices;
 using System.Security.Authentication;
 using System.Text;
 using System.Text.Json.Serialization.Metadata;
-using System.Xml.Linq;
 using RabbitMQ.Client;
 
 namespace PSSharp.PowerShell.RabbitMQ.Commands.Management;
@@ -237,6 +236,364 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
         );
 
         await CheckManagementHttpStatusCode(response, cancellationToken);
+    }
+
+    public async IAsyncEnumerable<Binding> ListExchangeBindingsBySource(
+        string vhost,
+        string fromExchange,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentException.ThrowIfNullOrEmpty(fromExchange);
+
+        var vhostPart = Uri.EscapeDataString(vhost);
+        var exchangePart = Uri.EscapeDataString(fromExchange);
+
+        using var response = await _http.GetAsync(
+            $"/api/exchanges/{vhostPart}/{exchangePart}/bindings/source",
+            cancellationToken
+        );
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+
+        await foreach (
+            var row in response.Content.ReadFromJsonAsAsyncEnumerable(
+                ManagementApiJsonContext.Default.Binding,
+                cancellationToken
+            )
+        )
+        {
+            yield return row!;
+        }
+    }
+
+    public async IAsyncEnumerable<Binding> ListExchangeBindingsByDestination(
+        string vhost,
+        string toExchange,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentException.ThrowIfNullOrEmpty(toExchange);
+
+        var vhostPart = Uri.EscapeDataString(vhost);
+        var exchangePart = Uri.EscapeDataString(toExchange);
+
+        using var response = await _http.GetAsync(
+            $"/api/exchanges/{vhostPart}/{exchangePart}/bindings/destination",
+            cancellationToken
+        );
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+
+        await foreach (
+            var row in response.Content.ReadFromJsonAsAsyncEnumerable(
+                ManagementApiJsonContext.Default.Binding,
+                cancellationToken
+            )
+        )
+        {
+            yield return row!;
+        }
+    }
+
+    public async IAsyncEnumerable<Binding> ListQueueBindings(
+        string vhost,
+        string toQueue,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentException.ThrowIfNullOrEmpty(toQueue);
+
+        var vhostPart = Uri.EscapeDataString(vhost);
+        var queuePart = Uri.EscapeDataString(toQueue);
+
+        using var response = await _http.GetAsync(
+            $"/api/queues/{vhostPart}/{queuePart}/bindings",
+            cancellationToken
+        );
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+
+        await foreach (
+            var row in response.Content.ReadFromJsonAsAsyncEnumerable(
+                ManagementApiJsonContext.Default.Binding,
+                cancellationToken
+            )
+        )
+        {
+            yield return row!;
+        }
+    }
+
+    public async IAsyncEnumerable<Binding> ListBindings(
+        string? vhost,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        var vhostPart = vhost is null ? null : Uri.EscapeDataString(vhost);
+
+        using var response = await _http.GetAsync($"/api/bindings/{vhostPart}", cancellationToken);
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+
+        await foreach (
+            var row in response.Content.ReadFromJsonAsAsyncEnumerable(
+                ManagementApiJsonContext.Default.Binding,
+                cancellationToken
+            )
+        )
+        {
+            yield return row!;
+        }
+    }
+
+    public async IAsyncEnumerable<Binding> ListBindingsFromExchangeToQueue(
+        string vhost,
+        string exchange,
+        string queue,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentException.ThrowIfNullOrEmpty(exchange);
+        ArgumentException.ThrowIfNullOrEmpty(queue);
+
+        var vhostPart = Uri.EscapeDataString(vhost);
+        var exchangePart = Uri.EscapeDataString(exchange);
+        var queuePart = Uri.EscapeDataString(queue);
+
+        using var response = await _http.GetAsync(
+            $"/api/bindings/{vhostPart}/e/{exchangePart}/q/{queuePart}",
+            cancellationToken
+        );
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+
+        await foreach (
+            var row in response.Content.ReadFromJsonAsAsyncEnumerable(
+                ManagementApiJsonContext.Default.Binding,
+                cancellationToken
+            )
+        )
+        {
+            yield return row!;
+        }
+    }
+
+    public async IAsyncEnumerable<Binding> ListBindingsFromExchangeToExchange(
+        string vhost,
+        string source,
+        string destination,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentException.ThrowIfNullOrEmpty(source);
+        ArgumentException.ThrowIfNullOrEmpty(destination);
+
+        var vhostPart = Uri.EscapeDataString(vhost);
+        var sourcePart = Uri.EscapeDataString(source);
+        var destinationPart = Uri.EscapeDataString(destination);
+
+        using var response = await _http.GetAsync(
+            $"/api/bindings/{vhostPart}/e/{sourcePart}/q/{destinationPart}",
+            cancellationToken
+        );
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+
+        await foreach (
+            var row in response.Content.ReadFromJsonAsAsyncEnumerable(
+                ManagementApiJsonContext.Default.Binding,
+                cancellationToken
+            )
+        )
+        {
+            yield return row!;
+        }
+    }
+
+    public async Task<Binding?> GetExchangeBinding(
+        string vhost,
+        string source,
+        string destination,
+        string propertiesKey,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentException.ThrowIfNullOrEmpty(source);
+        ArgumentException.ThrowIfNullOrEmpty(destination);
+        ArgumentException.ThrowIfNullOrEmpty(propertiesKey);
+
+        var vhostPart = Uri.EscapeDataString(vhost);
+        var sourcePart = Uri.EscapeDataString(source);
+        var destinationPart = Uri.EscapeDataString(destination);
+        var propsPart = Uri.EscapeDataString(propertiesKey);
+
+        var uri = $"/api/bindings/{vhostPart}/e/{sourcePart}/e/{destinationPart}/{propsPart}";
+        using var response = await _http.GetAsync(uri, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+        var data = await response.Content.ReadFromJsonAsync(
+            ManagementApiJsonContext.Default.Binding,
+            cancellationToken
+        );
+        return data!;
+    }
+
+    public async Task<Binding?> GetQueueBinding(
+        string vhost,
+        string exchange,
+        string queue,
+        string propertiesKey,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentException.ThrowIfNullOrEmpty(exchange);
+        ArgumentException.ThrowIfNullOrEmpty(queue);
+        ArgumentException.ThrowIfNullOrEmpty(propertiesKey);
+
+        var vhostPart = Uri.EscapeDataString(vhost);
+        var sourcePart = Uri.EscapeDataString(exchange);
+        var destinationPart = Uri.EscapeDataString(queue);
+        var propsPart = Uri.EscapeDataString(propertiesKey);
+
+        var uri = $"/api/bindings/{vhostPart}/e/{sourcePart}/e/{destinationPart}/{propsPart}";
+        using var response = await _http.GetAsync(uri, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+        var data = await response.Content.ReadFromJsonAsync(
+            ManagementApiJsonContext.Default.Binding,
+            cancellationToken
+        );
+        return data!;
+    }
+
+    public async Task<bool> DeleteExchangeBinding(
+        string vhost,
+        string source,
+        string destination,
+        string propertiesKey,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentException.ThrowIfNullOrEmpty(source);
+        ArgumentException.ThrowIfNullOrEmpty(destination);
+        ArgumentException.ThrowIfNullOrEmpty(propertiesKey);
+
+        var vhostPart = Uri.EscapeDataString(vhost);
+        var sourcePart = Uri.EscapeDataString(source);
+        var destinationPart = Uri.EscapeDataString(destination);
+        var propsPart = Uri.EscapeDataString(propertiesKey);
+
+        var uri = $"/api/bindings/{vhostPart}/e/{sourcePart}/e/{destinationPart}/{propsPart}";
+        using var response = await _http.GetAsync(uri, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return false;
+        }
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> DeleteQueueBinding(
+        string vhost,
+        string exchange,
+        string queue,
+        string propertiesKey,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentException.ThrowIfNullOrEmpty(exchange);
+        ArgumentException.ThrowIfNullOrEmpty(queue);
+        ArgumentException.ThrowIfNullOrEmpty(propertiesKey);
+
+        var vhostPart = Uri.EscapeDataString(vhost);
+        var sourcePart = Uri.EscapeDataString(exchange);
+        var destinationPart = Uri.EscapeDataString(queue);
+        var propsPart = Uri.EscapeDataString(propertiesKey);
+
+        var uri = $"/api/bindings/{vhostPart}/e/{sourcePart}/q/{destinationPart}/{propsPart}";
+        using var response = await _http.GetAsync(uri, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return false;
+        }
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+        return true;
+    }
+
+    public async Task<string> CreateExchangeBinding(
+        string vhost,
+        string source,
+        string destination,
+        CreateBinding payload,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentException.ThrowIfNullOrEmpty(source);
+        ArgumentException.ThrowIfNullOrEmpty(destination);
+
+        var vhostPart = Uri.EscapeDataString(vhost);
+        var sourcePart = Uri.EscapeDataString(source);
+        var destinationPart = Uri.EscapeDataString(destination);
+
+        using var response = await _http.PostAsJsonAsync(
+            $"/api/bindings/{vhostPart}/e/{sourcePart}/e/{destinationPart}",
+            payload,
+            ManagementApiJsonContext.Default.CreateBinding,
+            cancellationToken
+        );
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+        return GetLastPathPartOfLocation(response);
+    }
+
+    public async Task<string> CreateQueueBinding(
+        string vhost,
+        string exchange,
+        string queue,
+        CreateBinding payload,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(vhost);
+        ArgumentException.ThrowIfNullOrEmpty(exchange);
+        ArgumentException.ThrowIfNullOrEmpty(queue);
+
+        var vhostPart = Uri.EscapeDataString(vhost);
+        var sourcePart = Uri.EscapeDataString(exchange);
+        var destinationPart = Uri.EscapeDataString(queue);
+
+        using var response = await _http.PostAsJsonAsync(
+            $"/api/bindings/{vhostPart}/e/{sourcePart}/q/{destinationPart}",
+            payload,
+            ManagementApiJsonContext.Default.CreateBinding,
+            cancellationToken
+        );
+        await CheckManagementHttpStatusCode(response, cancellationToken);
+        return GetLastPathPartOfLocation(response);
+    }
+
+    private static string GetLastPathPartOfLocation(HttpResponseMessage response)
+    {
+        if (response.Headers.Location is null)
+        {
+            throw new UnreachableException(
+                "The API contractually sends a Location header in response to binding factory endpoints."
+            );
+        }
+
+        var path = response.Headers.Location.AbsolutePath.AsSpan().TrimEnd('/');
+        var lastPartIndex = path.LastIndexOf('/') + 1;
+        return path[lastPartIndex..].ToString();
     }
 
     public async IAsyncEnumerable<ExchangeDetails> ListExchanges(
@@ -556,5 +913,193 @@ internal sealed class ManagementClient(HttpClient http) : IDisposable
     public void Dispose()
     {
         _http.Dispose();
+    }
+}
+
+internal static class ManagementClientExtensions
+{
+    /// <summary>
+    /// Uses the optimal server-side endpoint to list bindings given a variety of filtering parameters. Filters
+    /// that cannot be combined server-side will still run the "closest match" API endpoint and run the other
+    /// filters client-side using case-sensitive comparison.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException"></exception>
+    public static async IAsyncEnumerable<Binding> ListBindings(
+        this ManagementClient client,
+        string? vhost = null,
+        string? source = null,
+        string? destination = null,
+        DestinationType? destinationType = null,
+        string? routingKey = null,
+        string? propertiesKey = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentNullException.ThrowIfNull(client);
+
+        if (
+            vhost is not null
+            && source is not null
+            && destination is not null
+            && destinationType is not null
+            && routingKey is not null
+            && propertiesKey is not null
+        )
+        {
+            var binding = destinationType switch
+            {
+                DestinationType.Exchange => await client.GetExchangeBinding(
+                    vhost,
+                    source,
+                    destination,
+                    propertiesKey,
+                    cancellationToken
+                ),
+                DestinationType.Queue => await client.GetQueueBinding(
+                    vhost,
+                    source,
+                    destination,
+                    propertiesKey,
+                    cancellationToken
+                ),
+                _ => throw new ArgumentOutOfRangeException(
+                    nameof(destinationType),
+                    destinationType,
+                    "The value is not a defined enumeration value."
+                ),
+            };
+            if (binding is not null)
+            {
+                yield return binding;
+            }
+            yield break;
+        }
+
+        // When a filter is "consumed" server-side, set it to null to avoid the client from repeating the comparison
+        IAsyncEnumerable<Binding> serverFiltered;
+        if (vhost is null)
+        {
+            serverFiltered = client.ListBindings(null, cancellationToken);
+        }
+        else if (
+            source is not null
+            && destination is not null
+            && destinationType == DestinationType.Exchange
+        )
+        {
+            serverFiltered = client.ListBindingsFromExchangeToExchange(
+                vhost,
+                source,
+                destination,
+                cancellationToken
+            );
+            vhost = null;
+            source = null;
+            destination = null;
+            destinationType = null;
+        }
+        else if (
+            source is not null
+            && destination is not null
+            && destinationType == DestinationType.Queue
+        )
+        {
+            serverFiltered = client.ListBindingsFromExchangeToQueue(
+                vhost,
+                source,
+                destination,
+                cancellationToken
+            );
+            vhost = null;
+            source = null;
+            destination = null;
+            destinationType = null;
+        }
+        else if (source is not null && destination is not null)
+        {
+            // [From exchange] to [both queue and exchanges].
+            // Therefore we can't use "to destination" because that only goes "to destination of type exchange"
+            // "by source" is likely to be extremely broad, so I think it is better to make two specific network requests
+            var e2e = client.ListBindingsFromExchangeToExchange(
+                vhost,
+                source,
+                destination,
+                cancellationToken
+            );
+            var e2q = client.ListBindingsFromExchangeToQueue(
+                vhost,
+                source,
+                destination,
+                cancellationToken
+            );
+            vhost = null;
+            source = null;
+            destination = null;
+
+            serverFiltered = e2e.Concat(e2q);
+        }
+        else if (destination is not null && destinationType == DestinationType.Exchange)
+        {
+            serverFiltered = client.ListExchangeBindingsByDestination(
+                vhost,
+                destination,
+                cancellationToken
+            );
+            vhost = null;
+            destination = null;
+        }
+        else if (destination is not null && destinationType == DestinationType.Queue)
+        {
+            serverFiltered = client.ListQueueBindings(vhost, destination, cancellationToken);
+            vhost = null;
+            destination = null;
+            destinationType = null;
+        }
+        else if (source is not null)
+        {
+            serverFiltered = client.ListExchangeBindingsBySource(vhost, source, cancellationToken);
+            vhost = null;
+            source = null;
+        }
+        else
+        {
+            serverFiltered = client.ListBindings(vhost, cancellationToken);
+            vhost = null;
+        }
+
+        await foreach (var binding in serverFiltered)
+        {
+            if (vhost is not null && !binding.VHost.Equals(vhost))
+            {
+                continue;
+            }
+
+            if (source is not null && !binding.Source.Equals(source))
+            {
+                continue;
+            }
+
+            if (destination is not null && !binding.Destination.Equals(destination))
+            {
+                continue;
+            }
+
+            if (destinationType is not null && binding.DestinationType != destinationType)
+            {
+                continue;
+            }
+
+            if (routingKey is not null && !binding.RoutingKey.Equals(routingKey))
+            {
+                continue;
+            }
+
+            if (propertiesKey is not null && !binding.PropertiesKey.Equals(propertiesKey))
+            {
+                continue;
+            }
+
+            yield return binding;
+        }
     }
 }

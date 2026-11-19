@@ -10,4 +10,6 @@ internal static class Nouns
     public const string RabbitMqAck = nameof(RabbitMqAck);
     public const string RabbitMqNack = nameof(RabbitMqNack);
     public const string RabbitMqConnection = nameof(RabbitMqConnection);
+    public const string RabbitMqQueueBinding = nameof(RabbitMqQueueBinding);
+    public const string RabbitMqExchangeBinding = nameof(RabbitMqExchangeBinding);
 }
