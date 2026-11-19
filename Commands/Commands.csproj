@@ -1,40 +1,43 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-	<PropertyGroup>
-		<AssemblyName>PSSharp.PowerShell.RabbitMQ.Commands</AssemblyName>
-		<RootNamespace>PSSharp.PowerShell.RabbitMQ.Commands</RootNamespace>
-	</PropertyGroup>
+    <PropertyGroup>
+        <AssemblyName>PSSharp.PowerShell.RabbitMQ.Commands</AssemblyName>
+        <RootNamespace>PSSharp.PowerShell.RabbitMQ.Commands</RootNamespace>
+        <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    </PropertyGroup>
 
-	<ItemGroup>
-		<PackageReference Include="Microsoft.PowerShell.SDK" Version="7.6.9" ExcludeAssets="runtime" PrivateAssets="all" />
-		<PackageReference Include="RabbitMQ.Client" Version="7.2.2" />
-	</ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.PowerShell.SDK" Version="7.6.9" ExcludeAssets="runtime"
+            PrivateAssets="all" />
+        <PackageReference Include="RabbitMQ.Client" Version="7.2.2" />
+    </ItemGroup>
 
-	<ItemGroup>
-		<None Update="PSSharp.PowerShell.RabbitMQ.Commands.psd1">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-		<None Update="PSSharp.PowerShell.RabbitMQ.formats.ps1xml">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-		<None Update="PSSharp.PowerShell.RabbitMQ.ps1">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-		<None Update="PSSharp.PowerShell.RabbitMQ.types.ps1xml">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-	</ItemGroup>
+    <ItemGroup>
+        <None Update="PSSharp.PowerShell.RabbitMQ.Commands.psd1">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="PSSharp.PowerShell.RabbitMQ.formats.ps1xml">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="PSSharp.PowerShell.RabbitMQ.ps1">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="PSSharp.PowerShell.RabbitMQ.types.ps1xml">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
 
-	<Target Name="UpdateModuleManifest" AfterTargets="Build">
-		<Exec Command="pwsh -NoProfile -File &quot;$(ProjectDir)AfterBuild.ps1&quot; -ManifestPath &quot;$(ProjectDir)$(OutDir)$(AssemblyName).psd1&quot; -Version &quot;$(Version)&quot;" />
-	</Target>
-	
-	<Target Name="PublishModuleManifest" AfterTargets="Publish">
-		<ItemGroup>
-			<PowerShellModuleManifest Include="$(TargetDir)$(AssemblyName).psd1" />
-		</ItemGroup>
+    <Target Name="UpdateModuleManifest" AfterTargets="Build">
+        <Exec
+            Command="pwsh -NoProfile -File &quot;$(ProjectDir)AfterBuild.ps1&quot; -ManifestPath &quot;$(ProjectDir)$(OutDir)$(AssemblyName).psd1&quot; -Version &quot;$(Version)&quot;" />
+    </Target>
 
-		<Copy SourceFiles="@(PowerShellModuleManifest )"
-			  DestinationFolder="$(PublishDir)"
-			  OverwriteReadOnlyFiles="true" />
-	</Target>
+    <Target Name="PublishModuleManifest" AfterTargets="Publish">
+        <ItemGroup>
+            <PowerShellModuleManifest Include="$(TargetDir)$(AssemblyName).psd1" />
+        </ItemGroup>
+
+        <Copy SourceFiles="@(PowerShellModuleManifest )"
+            DestinationFolder="$(PublishDir)"
+            OverwriteReadOnlyFiles="true" />
+    </Target>
 </Project>

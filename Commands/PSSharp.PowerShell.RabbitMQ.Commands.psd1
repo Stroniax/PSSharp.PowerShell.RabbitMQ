@@ -4,6 +4,7 @@
     Author             = @(
         'Caleb Frederickson'
     )
+    Description        = 'PowerShell cmdlets to interact with RabbitMQ via AMQP and Management API'
     PowerShellVersion  = '7.2'
     RootModule         = 'PSSharp.PowerShell.RabbitMQ.Commands.dll'
     RequiredAssemblies = @(
@@ -17,4 +18,16 @@
     TypesToProcess     = @(
         'PSSharp.PowerShell.RabbitMQ.types.ps1xml'
     )
+    PrivateData        = @{
+        PSData = @{
+            Tags = @(
+                'RabbitMQ', 'Rabbit', 'Message', 'Queue', 'Management', 'Broker', 'Exchange', 'Binding', 'Routing', 'Keys', 'API', 'Connection', 'Consumer', 'Ack', 'Nack', 'AMQP'
+            )
+        }
+    }
+    FunctionsToExport  = @()
+    AliasesToExport    = @('rcrmq', 'sdrmq')
+    VariablesToExport  = @()
+    ModuleList         = @()
+    NestedModules      = @()
 }
