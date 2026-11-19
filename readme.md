@@ -1,17 +1,20 @@
 # RabbitMQ PowerShell Module
 
+> [!WARNING]
+> This product is still in beta. Documentation may be incomplete. Until version 1.0, minor version updates may introduce breaking changes.
+
 ## Usage
 
 Install, then import the module.
 
 ```pwsh
 # First, install the module
-PS:/> Install-Module 'PSSharp.PowerShell.RabbitMQ'
+PS:/> Install-Module 'PSSharp.PowerShell.RabbitMQ.Commands'
 # (or, using PSResourceGet to install the module)
-PS:/> Install-PSResource -Name 'PSSharp.PowerShell.RabbitMQ'
+PS:/> Install-PSResource -Name 'PSSharp.PowerShell.RabbitMQ.Commands'
 
 # 
-PS:/> Import-Module 'PSSharp.PowerShell.RabbitMQ'
+PS:/> Import-Module 'PSSharp.PowerShell.RabbitMQ.Commands'
 ```
 
 The module supports two connection methods. Some subset of cmdlets only work with one or the other; some of the
